@@ -1,0 +1,8 @@
+resolver: lts-6.3
+packages:
+- '.'
+- location:
+   git: https://github.com/esmolanka/sexp-grammar.git
+   commit: 5c1d0accd481b3f18fd2a8793e844d2bc5f10e4e
+
+extra-deps: []

@@ -1,0 +1,19 @@
+
+:def (let numeral = (pi A :: 0 -> (pi _ :: (pi _ :: A -> A) -> (pi _ :: A -> A))))
+:def (let zero  = (lambda A :: 0 -> (lambda f :: (pi _ :: A -> A) -> (lambda x :: A -> x))))
+:def (let one   = (lambda A :: 0 -> (lambda f :: (pi _ :: A -> A) -> (lambda x :: A -> (f x)))))
+:def (let two   = (lambda A :: 0 -> (lambda f :: (pi _ :: A -> A) -> (lambda x :: A -> (f (f x))))))
+:def (let three = (lambda A :: 0 -> (lambda f :: (pi _ :: A -> A) -> (lambda x :: A -> (f (f (f x)))))))
+:def (let plus  = (lambda m :: numeral -> (lambda n :: numeral -> (lambda A :: 0 -> (lambda f :: (pi _ :: A -> A) -> (lambda x :: A -> (((m A) f) (((n A) f) x))))))))
+
+:def (sig Nat :: 0)
+:def (sig z :: Nat)
+:def (sig s :: (pi _ :: Nat -> Nat))
+
+:def (let four = (((((plus three) one) Nat) s) z))
+
+:echo 3 + 1 =
+four
+
+:echo 4 ::
+:t four
