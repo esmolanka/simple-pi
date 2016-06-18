@@ -5,20 +5,11 @@
 
 module Expr where
 
-import System.Console.Haskeline
-
-import Control.Arrow (first, second)
-import Control.Category ((>>>))
 import Control.Monad.State.Strict
 import Control.Monad.Except
 
 import qualified Data.Map as M
 import Data.Map (Map)
-import Data.Text (Text)
-import Data.ByteString.Lazy.Char8 (pack, unpack)
-
-import Language.SexpGrammar
-import Language.SexpGrammar.Generic
 import GHC.Generics (Generic)
 
 data Variable
@@ -37,43 +28,6 @@ data Expr
   | Lambda Abstraction
   | App Expr Expr
     deriving (Show, Eq, Ord, Generic)
-
-----------------------------------------------------------------------
-
-instance SexpIso Expr where
-  sexpIso = expressionGrammar
-
-expressionGrammar :: SexpG Expr
-expressionGrammar = match
-  $ With (\var  -> variableGrammar >>> var)
-  $ With (\univ -> int >>> univ)
-  $ With (\pi   -> abstractionGrammar "pi" >>> pi)
-  $ With (\lam  -> abstractionGrammar "lambda" >>> lam)
-  $ With (\app  -> list (el expressionGrammar >>> el expressionGrammar) >>> app )
-  $ End
-
-instance SexpIso Variable where
-  sexpIso = variableGrammar
-
-variableGrammar :: SexpG Variable
-variableGrammar = match
-  $ With (\str -> symbol' >>> str)
-  $ With (\strn -> vect (el symbol' >>> el int) >>> strn)
-  $ With (\dummy -> sym "_" >>> dummy)
-  $ End
-
-abstractionGrammar :: Text -> SexpG Abstraction
-abstractionGrammar abskind = with $ \abs ->
-  list (
-    el (sym abskind)     >>>
-    el variableGrammar   >>>
-    el (kw (Kw ":"))     >>>
-    el expressionGrammar >>>
-    el (sym "->")        >>>
-    el expressionGrammar ) >>>
-  abs
-
-----------------------------------------------------------------------
 
 refresh :: (MonadState Int m) => Variable -> m Variable
 refresh (VarStr x)   = modify succ >> GenSym x   <$> get
@@ -205,85 +159,3 @@ equal ctx e1 e2 = do
       ts <- equalExpr t1 t2
       es <- equalExpr e1 =<< subst (M.singleton y (Var x)) e2
       return (ts && es)
-
-runT :: ExceptT String (State Int) a -> Int -> (Either String a, Int)
-runT m = runState (runExceptT m)
-
-interactive :: (Monad m) => (Context -> Expr -> ExceptT String (State Int) Expr) -> String -> ExceptT String (StateT (Context, Int) m) String
-interactive act exprstr = do
-  expr <- either throwError return $ decode (pack exprstr)
-  (ctx, n) <- get
-  let (res, n') = runT (act ctx expr) n
-  put (ctx, n')
-  case res of
-    Left err ->
-      throwError $ "error: " ++ err ++ " in " ++ show expr
-    Right expr' ->
-      either throwError (return . unpack) $ encodePretty expr'
-
-data Statement
-  = Let Variable Expr {- <var> = <expr> -}
-  | Sig Variable Expr {- <var> : <expr> -}
-  deriving (Show, Eq, Ord, Generic)
-
-instance SexpIso Statement where
-  sexpIso = match
-    $ With (\let' ->
-        list (
-          el (sym "let")   >>>
-          el sexpIso       >>>
-          el (sym "=")     >>>
-          el sexpIso ) >>> let')
-    $ With (\sig ->
-        list (
-          el (sym "sig")  >>>
-          el sexpIso      >>>
-          el (kw (Kw ":")) >>>
-          el sexpIso ) >>> sig)
-    $ End
-
-processStatement :: (Monad m) => String -> ExceptT String (StateT (Context, Int) m) ()
-processStatement input = do
-  stmt <- either throwError return $ decode (pack input)
-  case stmt of
-    (Let var expr) -> do
-      (ctx, n) <- get
-      let (res, n') = runT (inferType ctx expr) n
-      modify (second (const n'))
-      ty <- either throwError return res
-      modify (first (extend var ty (Just expr)))
-      return ()
-    (Sig var ty) -> do
-      modify (first (extend var ty Nothing))
-      return ()
-
-main :: IO ()
-main =
-  evalStateT (runInputT defaultSettings loop) (fresh, 0)
-  where
-    loop :: InputT (StateT (Context, Int) IO) ()
-    loop = do
-      isterm <- haveTerminalUI
-      minput <- if isterm then getInputLine "λ>>> " else getInputLine ""
-      case minput of
-        Nothing -> return ()
-        Just "" -> loop
-        Just (':':cmd) ->
-          case cmd of
-            "q" -> return ()
-            't':' ':rest -> do
-              a <- lift $ runExceptT (interactive inferType rest)
-              either outputStrLn outputStrLn $ a
-              loop
-            'd':'e':'f':' ':rest -> do
-              a <- lift $ runExceptT (processStatement rest)
-              either outputStrLn return $ a
-              loop
-            'e':'c':'h':'o':' ':rest -> do
-              outputStrLn rest
-              loop
-            _ -> outputStrLn "unknown command" >> loop
-        Just input -> do
-          a <- lift $ runExceptT (interactive normalize input)
-          either outputStrLn outputStrLn $ a
-          loop

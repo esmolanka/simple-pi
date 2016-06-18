@@ -1,19 +1,31 @@
 
-:def (let numeral = (pi A :: 0 -> (pi _ :: (pi _ :: A -> A) -> (pi _ :: A -> A))))
-:def (let zero  = (lambda A :: 0 -> (lambda f :: (pi _ :: A -> A) -> (lambda x :: A -> x))))
-:def (let one   = (lambda A :: 0 -> (lambda f :: (pi _ :: A -> A) -> (lambda x :: A -> (f x)))))
-:def (let two   = (lambda A :: 0 -> (lambda f :: (pi _ :: A -> A) -> (lambda x :: A -> (f (f x))))))
-:def (let three = (lambda A :: 0 -> (lambda f :: (pi _ :: A -> A) -> (lambda x :: A -> (f (f (f x)))))))
-:def (let plus  = (lambda m :: numeral -> (lambda n :: numeral -> (lambda A :: 0 -> (lambda f :: (pi _ :: A -> A) -> (lambda x :: A -> (((m A) f) (((n A) f) x))))))))
+(Definition numeral
+  (forall (A :: 0) -> (-> (-> A A) A A)))
 
-:def (sig Nat :: 0)
-:def (sig z :: Nat)
-:def (sig s :: (pi _ :: Nat -> Nat))
+(Definition zero
+  (lambda (A :: 0) (f :: (-> A A)) (x :: A) .
+    x))
 
-:def (let four = (((((plus three) one) Nat) s) z))
+(Definition one
+  (lambda (A :: 0) (f :: (-> A A)) (x :: A) .
+    (f x)))
 
-:echo 3 + 1 =
-four
+(Definition two
+  (lambda (A :: 0) (f :: (-> A A)) (x :: A) .
+    (f (f x))))
 
-:echo 4 ::
-:t four
+(Definition three
+  (lambda (A :: 0) (f :: (-> A A)) (x :: A) .
+    (f (f (f x)))))
+
+(Parameter Nat 0)
+(Parameter z Nat)
+(Parameter s (-> Nat Nat))
+
+(Check (three Nat s z))
+
+(Definition plus
+  (lambda (m :: numeral) (n :: numeral) (A :: 0) (f :: (-> A A)) (x :: A) .
+    (m A f (n A f x))))
+
+(Check (plus three two Nat s z))
