@@ -51,5 +51,6 @@ data Statement
   = Definition Variable Sugared {- <var> = <expr> -}
   | Parameter  Variable Sugared {- <var> : <expr> -}
   | Check      Sugared
-  | Type       Sugared
+  | Eval       Sugared
+  | AssertType Sugared Sugared
     deriving (Generic)

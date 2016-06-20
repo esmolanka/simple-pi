@@ -47,11 +47,16 @@ processStatement stmt =
       modify (first (extend var (desugar ty) Nothing))
       return Nothing
     (Check expr) -> do
-      expr' <- eval (`normalize` desugar expr)
-      fmap Just (showExpr expr')
-    (Type expr) -> do
       expr' <- eval (`inferType` desugar expr)
       fmap Just (showExpr expr')
+    (Eval expr) -> do
+      expr' <- eval (`normalize` desugar expr)
+      fmap Just (showExpr expr')
+    (AssertType expr ty) -> do
+      eval $ \ctx -> do
+        ty' <- inferType ctx (desugar expr)
+        checkEqual ctx (desugar ty) ty'
+      return Nothing
 
 evalProg :: String -> EvalT IO ()
 evalProg input = do

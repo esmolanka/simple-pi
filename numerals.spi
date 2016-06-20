@@ -22,10 +22,12 @@
 (Parameter z Nat)
 (Parameter s (-> Nat Nat))
 
-(Check (three Nat s z))
+(Eval (three Nat s z))
 
 (Definition plus
   (lambda (m :: numeral) (n :: numeral) (A :: 0) (f :: (-> A A)) (x :: A) .
     (m A f (n A f x))))
 
-(Check (plus three two Nat s z))
+(AssertType plus (-> numeral numeral numeral))
+
+(Eval (plus three two Nat s z))

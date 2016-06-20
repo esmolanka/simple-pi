@@ -37,10 +37,15 @@ statementGrammar = match
       list (
         el (sym "Check")      >>>
         el sugaredGrammar)    >>> check)
-  $ With (\typ ->
+  $ With (\eval ->
       list (
-        el (sym "Type")       >>>
-        el sugaredGrammar)    >>> typ)
+        el (sym "Eval")       >>>
+        el sugaredGrammar)    >>> eval)
+  $ With (\assert ->
+      list (
+        el (sym "AssertType") >>>
+        el sugaredGrammar     >>>
+        el sugaredGrammar)    >>> assert)
   $ End
 
 ----------------------------------------------------------------------
