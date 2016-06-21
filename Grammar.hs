@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes        #-}
@@ -6,11 +7,12 @@
 module Grammar where
 
 import Control.Category ((>>>))
-import Control.Monad.State.Strict
 
-import Data.Text (Text)
+import Data.Functor.Foldable (Fix (..))
 import Data.Semigroup
 import Data.Coerce
+
+import GHC.Generics (Generic)
 
 import Language.SexpGrammar
 import Language.SexpGrammar.Generic
@@ -20,6 +22,14 @@ import Sugar
 
 ----------------------------------------------------------------------
 -- Statement grammar
+
+data Statement
+  = Definition Variable Sugared {- <var> = <expr> -}
+  | Parameter  Variable Sugared {- <var> : <expr> -}
+  | Check      Sugared
+  | Eval       Sugared
+  | AssertType Sugared Sugared
+    deriving (Generic)
 
 statementGrammar :: SexpG Statement
 statementGrammar = match
@@ -49,7 +59,7 @@ statementGrammar = match
   $ End
 
 ----------------------------------------------------------------------
--- Sugared grammars
+-- sugared grammars
 
 bindingGrammar
   :: Grammar SexpGrammar (Sexp :- Variable :- t) (e :- Variable :- t)
@@ -64,13 +74,15 @@ bindingGrammar g = with $ \binding ->
 sugaredGrammar :: SexpG Sugared
 sugaredGrammar = fixG $ match
   $ With (\slambda ->
+      position >>> swap >>>
       list (
-        el (sym "lambda") >>>
+        el (sym "lambda")   >>>
         terminatedBy
           (bindingGrammar sugaredGrammar)
           (el (sym ".") >>> el sugaredGrammar)) >>>
       slambda)
   $ With (\spi ->
+      position >>> swap >>>
       list (
         el (sym "forall")  >>>
         el (bindingGrammar sugaredGrammar) >>>
@@ -78,6 +90,7 @@ sugaredGrammar = fixG $ match
         el sugaredGrammar) >>>
       spi)
   $ With (\sarrow ->
+      position >>> swap >>>
       list (
         el (sym "->") >>>
         el sugaredGrammar >>>
@@ -85,29 +98,62 @@ sugaredGrammar = fixG $ match
         rest sugaredGrammar) >>>
       sarrow)
   $ With (\sapp ->
+      position >>> swap >>>
       list (
         el sugaredGrammar >>>
         el sugaredGrammar >>>
         rest sugaredGrammar) >>>
       sapp)
   $ With (\svar ->
-      variableGrammar >>>
-      svar)
+        position >>> swap >>>
+        variableGrammar >>>
+        svar)
   $ With (\suniv ->
+      position >>> swap >>>
       int >>>
       suniv)
   $ End
 
 ----------------------------------------------------------------------
--- Desugared grammars
+-- desugared grammars
 
 expressionGrammar :: SexpG Expr
-expressionGrammar = match
-  $ With (\var  -> variableGrammar >>> var)
-  $ With (\univ -> int >>> univ)
-  $ With (\pi   -> abstractionGrammar "pi" >>> pi)
-  $ With (\lam  -> abstractionGrammar "lambda" >>> lam)
-  $ With (\app  -> list (el expressionGrammar >>> el expressionGrammar) >>> app )
+expressionGrammar = fixG $ match
+  $ With (\var  ->
+      position        >>>
+      swap            >>>
+      variableGrammar >>> var)
+  $ With (\univ ->
+      position        >>>
+      swap            >>>
+      int             >>> univ)
+
+  $ With (\pi ->
+      position >>>
+      swap     >>>
+      list (
+        el (sym "forall")     >>>
+        el variableGrammar    >>>
+        el (kw (Kw ":"))      >>>
+        el expressionGrammar  >>>
+        el (sym "->")         >>>
+        el expressionGrammar) >>> pi)
+  $ With (\lam  ->
+      position >>>
+      swap     >>>
+      list (
+        el (sym "forall")     >>>
+        el variableGrammar    >>>
+        el (kw (Kw ":"))      >>>
+        el expressionGrammar  >>>
+        el (sym "->")         >>>
+        el expressionGrammar) >>> lam)
+  $ With (\app  ->
+      position >>>
+      swap     >>>
+      list (
+        el expressionGrammar  >>>
+        el expressionGrammar) >>> app)
   $ End
 
 variableGrammar :: SexpG Variable
@@ -116,17 +162,6 @@ variableGrammar = match
   $ With (\strn -> vect (el symbol' >>> el int) >>> strn)
   $ With (\dummy -> sym "_" >>> dummy)
   $ End
-
-abstractionGrammar :: Text -> SexpG Abstraction
-abstractionGrammar abskind = with $ \abs ->
-  list (
-    el (sym abskind)     >>>
-    el variableGrammar   >>>
-    el (kw (Kw ":"))     >>>
-    el expressionGrammar >>>
-    el (sym "->")        >>>
-    el expressionGrammar ) >>>
-  abs
 
 ----------------------------------------------------------------------
 -- Utils
@@ -148,10 +183,10 @@ terminatedBy
   -> Grammar SeqGrammar ([a] :- t) t'
   -> Grammar SeqGrammar t t'
 terminatedBy f g =
-  pushForget [] >>> fix (go f g)
+  pushForget [] >>> go f g
   where
-    go f g r = (addElem f >>> r)
-            <> (iso reverse reverse >>> g)
+    go f g = (addElem f >>> go f g)
+          <> (iso reverse reverse >>> g)
 
 fixG :: Grammar SexpGrammar (Sexp :- t) (f (Fix f) :- t)
      -> Grammar SexpGrammar (Sexp :- t) (Fix f :- t)

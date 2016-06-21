@@ -1,5 +1,7 @@
 resolver: lts-6.3
 packages:
 - '.'
+- '../sexp-grammar'
 extra-deps:
-- sexp-grammar-1.2.1
+# - sexp-grammar-1.2.1
+- recursion-schemes-4.1.2
