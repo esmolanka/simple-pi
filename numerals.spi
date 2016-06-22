@@ -1,33 +1,37 @@
 
 (Definition numeral
-  (forall (A :: 0) -> (-> (-> A A) A A)))
+  (forall (A :: *) -> (-> (-> A A) A A)))
 
 (Definition zero
-  (lambda (A :: 0) (f :: (-> A A)) (x :: A) .
+  (lambda ((A :: *) (f :: (-> A A)) (x :: A))
     x))
 
 (Definition one
-  (lambda (A :: 0) (f :: (-> A A)) (x :: A) .
+  (lambda ((A :: *) (f :: (-> A A)) (x :: A))
     (f x)))
 
 (Definition two
-  (lambda (A :: 0) (f :: (-> A A)) (x :: A) .
+  (lambda ((A :: *) (f :: (-> A A)) (x :: A))
     (f (f x))))
 
 (Definition three
-  (lambda (A :: 0) (f :: (-> A A)) (x :: A) .
+  (lambda ((A :: *) (f :: (-> A A)) (x :: A))
     (f (f (f x)))))
 
-(Parameter Nat 0)
+(Parameter Nat *)
 (Parameter z Nat)
 (Parameter s (-> Nat Nat))
 
 (Eval (three Nat s z))
 
 (Definition plus
-  (lambda (m :: numeral) (n :: numeral) (A :: 0) (f :: (-> A A)) (x :: A) .
+  (lambda ((m :: numeral) (n :: numeral) (A :: *) (f :: (-> A A)) (x :: A))
     (m A f (n A f x))))
 
+(Eval plus)
+
 (AssertType plus (-> numeral numeral numeral))
+
+(Check plus)
 
 (Eval (plus three two Nat s z))

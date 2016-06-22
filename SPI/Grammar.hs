@@ -4,21 +4,17 @@
 {-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE TypeOperators     #-}
 
-module Grammar where
+module SPI.Grammar where
 
 import Control.Category ((>>>))
-
-import Data.Functor.Foldable (Fix (..))
-import Data.Semigroup
 import Data.Coerce
-
 import GHC.Generics (Generic)
 
 import Language.SexpGrammar
 import Language.SexpGrammar.Generic
 
-import Expr
-import Sugar
+import SPI.Expr
+import SPI.Sugar
 
 ----------------------------------------------------------------------
 -- Statement grammar
@@ -77,9 +73,8 @@ sugaredGrammar = fixG $ match
       position >>> swap >>>
       list (
         el (sym "lambda")   >>>
-        terminatedBy
-          (bindingGrammar sugaredGrammar)
-          (el (sym ".") >>> el sugaredGrammar)) >>>
+        el (list (rest (bindingGrammar sugaredGrammar))) >>>
+        el sugaredGrammar) >>>
       slambda)
   $ With (\spi ->
       position >>> swap >>>
@@ -110,7 +105,7 @@ sugaredGrammar = fixG $ match
         svar)
   $ With (\suniv ->
       position >>> swap >>>
-      int >>>
+      starGrammar >>>
       suniv)
   $ End
 
@@ -126,7 +121,7 @@ expressionGrammar = fixG $ match
   $ With (\univ ->
       position        >>>
       swap            >>>
-      int             >>> univ)
+      starGrammar     >>> univ)
 
   $ With (\pi ->
       position >>>
@@ -142,11 +137,11 @@ expressionGrammar = fixG $ match
       position >>>
       swap     >>>
       list (
-        el (sym "forall")     >>>
+        el (sym "lambda")     >>>
         el variableGrammar    >>>
         el (kw (Kw ":"))      >>>
         el expressionGrammar  >>>
-        el (sym "->")         >>>
+        el (sym ".")         >>>
         el expressionGrammar) >>> lam)
   $ With (\app  ->
       position >>>
@@ -163,30 +158,36 @@ variableGrammar = match
   $ With (\dummy -> sym "_" >>> dummy)
   $ End
 
+starGrammar :: SexpG Int
+starGrammar = list (el (sym "type") >>> el int)
+
 ----------------------------------------------------------------------
 -- Utils
 
-consGrammar :: Grammar g (([a], a) :- t) ([a] :- t)
-consGrammar = partialIso "list" cons uncons
-  where
-    cons = uncurry $ flip (:)
-    uncons [] = Left (unexpected "empty list")
-    uncons (x:xs) = Right (xs, x)
+-- TODO : Doesn't work properly for generation
 
-addElem
-  :: Grammar SexpGrammar (Sexp :- [a] :- t) (a :- [a] :- t)
-  -> Grammar SeqGrammar ([a] :- t) ([a] :- t)
-addElem g = el g >>> pair >>> consGrammar
+-- consGrammar :: Grammar g (([a], a) :- t) ([a] :- t)
+-- consGrammar = partialIso "list" cons uncons
+--   where
+--     cons = uncurry $ flip (:)
+--     uncons [] = Left (unexpected "empty list")
+--     uncons (x:xs) = Right (xs, x)
 
-terminatedBy
-  :: Grammar SexpGrammar (Sexp :- [a] :- t) (a :- [a] :- t)
-  -> Grammar SeqGrammar ([a] :- t) t'
-  -> Grammar SeqGrammar t t'
-terminatedBy f g =
-  pushForget [] >>> go f g
-  where
-    go f g = (addElem f >>> go f g)
-          <> (iso reverse reverse >>> g)
+-- addElem
+--   :: Grammar SexpGrammar (Sexp :- [a] :- t) (a :- [a] :- t)
+--   -> Grammar SeqGrammar ([a] :- t) ([a] :- t)
+-- addElem g = el g >>> pair >>> consGrammar
+
+-- terminatedBy
+--   :: (Eq a) =>
+--      Grammar SexpGrammar (Sexp :- [a] :- t) (a :- [a] :- t)
+--   -> Grammar SeqGrammar ([a] :- t) t'
+--   -> Grammar SeqGrammar t t'
+-- terminatedBy f g =
+--   push [] >>> go f g
+--   where
+--     go f g = (addElem f >>> go f g)
+--           <> (iso reverse reverse >>> g)
 
 fixG :: Grammar SexpGrammar (Sexp :- t) (f (Fix f) :- t)
      -> Grammar SexpGrammar (Sexp :- t) (Fix f :- t)

@@ -18,9 +18,10 @@ import Data.ByteString.Lazy.Char8 (pack, unpack)
 import Language.Sexp (parseSexps)
 import Language.SexpGrammar
 
-import Expr
-import Sugar
-import Grammar
+import SPI.Sugar
+import SPI.Expr
+import SPI.Eval
+import SPI.Grammar
 
 type EvalT m = ExceptT String (StateT (Context, Int) m)
 
@@ -31,11 +32,10 @@ eval f = do
   put (ctx, n')
   either throwError return res
 
-
 showExpr :: (Monad m) => Expr -> EvalT m String
 showExpr =
   either throwError (return . unpack) .
-    encodePrettyWith expressionGrammar
+    encodePrettyWith sugaredGrammar . sugar
 
 processStatement :: (Monad m) => Statement -> EvalT m (Maybe String)
 processStatement stmt =
@@ -74,5 +74,5 @@ main = do
   prog <- getContents
   res <- evalStateT (runExceptT (evalProg prog)) (freshCtx, 0)
   case res of
-    Left err -> error err
+    Left err -> putStrLn err
     Right () -> return ()
