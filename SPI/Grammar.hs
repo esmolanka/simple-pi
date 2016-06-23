@@ -20,7 +20,8 @@ import SPI.Sugar
 -- Statement grammar
 
 data Statement
-  = Definition Variable Sugared {- <var> = <expr> -}
+  = Load       FilePath
+  | Definition Variable Sugared {- <var> = <expr> -}
   | Parameter  Variable Sugared {- <var> : <expr> -}
   | Check      Sugared
   | Eval       Sugared
@@ -29,6 +30,10 @@ data Statement
 
 statementGrammar :: SexpG Statement
 statementGrammar = match
+  $ With (\load ->
+      list (
+        el (sym "Load")       >>>
+        el string')           >>> load)
   $ With (\defn ->
       list (
         el (sym "Definition") >>>

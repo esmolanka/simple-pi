@@ -37,9 +37,16 @@ showExpr =
   either throwError (return . unpack) .
     encodePrettyWith sugaredGrammar . sugar
 
-processStatement :: (Monad m) => Statement -> EvalT m (Maybe String)
+processStatement :: Statement -> EvalT IO (Maybe String)
 processStatement stmt =
   case stmt of
+    (Load filename) -> do
+      prog <- liftIO (readFile filename)
+      sexps <- either throwError return $ parseSexps "<stdin>" (pack prog)
+      forM_ sexps $ \s -> do
+        stmt <- either throwError return (parseSexp statementGrammar s)
+        processStatement stmt
+      return Nothing
     (Definition var expr) -> do
       ty <- eval (inferType $ desugar expr)
       modify (first (extendCtx var ty (Just (desugar expr))))
