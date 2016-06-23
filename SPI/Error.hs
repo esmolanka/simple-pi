@@ -1,0 +1,24 @@
+{-# LANGUAGE FlexibleContexts    #-}
+
+module SPI.Error where
+
+import Control.Monad.Except
+
+import SPI.Expr
+import SPI.Pretty
+
+unknownIdentifierError :: (MonadError String m) => Position -> Variable -> m a
+unknownIdentifierError pos var =
+  throwError $ displayPos pos ++ ": unknown identifier: " ++ displayExpr (Fix $ Var dummyPos var)
+
+typesDontMatchError :: (MonadError String m) => Position -> Expr -> Expr -> m a
+typesDontMatchError pos t1 t2 =
+  throwError $ displayPos pos ++ ": types do not match:\n" ++ displayExpr t1 ++ "\n" ++ displayExpr t2
+
+getUniverse :: (MonadError String m) => Expr -> m Int
+getUniverse (Fix (Universe _pos x)) = return x
+getUniverse other = throwError $ displayPos (getPos other) ++ ": type expected:\n" ++ displayExpr other
+
+getPi  :: (MonadError String m) => Expr -> m (Variable, Expr, Expr)
+getPi (Fix (Pi _pos x t1 t2)) = return (x, t1, t2)
+getPi other = throwError $ displayPos (getPos other) ++ ": function expected:\n" ++ displayExpr other

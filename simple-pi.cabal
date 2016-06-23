@@ -15,7 +15,7 @@ cabal-version:       >=1.10
 executable spi
   main-is:             Main.hs
   ghc-options:         -Wall -fno-warn-name-shadowing -fno-warn-unused-do-bind
-  other-modules:       SPI.Expr, SPI.Eval, SPI.Sugar, SPI.Grammar, SPI.Pretty
+  other-modules:       SPI.Expr, SPI.Eval, SPI.Sugar, SPI.Grammar, SPI.Pretty, SPI.Value, SPI.Error
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5, mtl, transformers, containers, haskeline, sexp-grammar,
                        bytestring, text, semigroups, recursion-schemes
