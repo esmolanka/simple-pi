@@ -2,7 +2,7 @@ resolver: lts-6.3
 packages:
 - '.'
 - location:
-    git: git@github.com:esmolanka/sexp-grammar.git
+    git: https://github.com/esmolanka/sexp-grammar.git
     commit: 427e4b128b2633d93d34095982191765dbcc3bcf
 extra-deps:
 # - sexp-grammar-1.2.1
