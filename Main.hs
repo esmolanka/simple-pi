@@ -42,7 +42,7 @@ processStatement stmt =
   case stmt of
     (Load filename) -> do
       prog <- liftIO (readFile filename)
-      sexps <- either throwError return $ parseSexps "<stdin>" (pack prog)
+      sexps <- either throwError return $ parseSexps filename (pack prog)
       forM_ sexps $ \s -> do
         stmt <- either throwError return (parseSexp statementGrammar s)
         processStatement stmt

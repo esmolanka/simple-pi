@@ -79,15 +79,15 @@ eval = runEval . eval'
 eval' :: Expr -> EvalM Value
 eval' = cata $ \case
   Expr.Var pos x -> do
-    me <- asks (lookupValue x . fst)
-    case me of
+    mv <- asks (M.lookup x . snd)
+    case mv of
+      Just v -> return v
       Nothing -> do
-        mv <- asks (M.lookup x . snd)
-        case mv of
+        me <- asks (lookupValue x . fst)
+        case me of
           Nothing -> unknownIdentifierError pos x
-          Just v -> return v
-      Just Nothing -> return $ Neutral (Var x)
-      Just (Just e) -> eval' e
+          Just Nothing -> return $ Neutral (Var x)
+          Just (Just e) -> eval' e
 
   Expr.Universe _ n -> return $ Universe n
 
