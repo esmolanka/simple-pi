@@ -25,10 +25,10 @@ import SPI.Grammar
 
 type EvalT m = ExceptT String (StateT (Context, Int) m)
 
-eval :: (Monad m) => (ExceptT String (ReaderT Context (State Int)) a) -> EvalT m a
+eval :: (Monad m) => (ExceptT String (ReaderT (Context, Maybe Expr) (State Int)) a) -> EvalT m a
 eval f = do
   (ctx, n) <- get
-  let (res, n') = runState (runReaderT (runExceptT f) ctx) n
+  let (res, n') = runState (runReaderT (runExceptT f) (ctx, Nothing)) n
   put (ctx, n')
   either throwError return res
 

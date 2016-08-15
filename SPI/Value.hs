@@ -22,9 +22,9 @@ import SPI.Pretty
 
 type EvalM = ExceptT String (StateT Int (Reader (Context, Map Variable Value)))
 
-runEval  :: (MonadError String m, MonadReader Context m, MonadState Int m) => EvalM a -> m a
+runEval  :: (MonadError String m, MonadReader (Context, Maybe Expr) m, MonadState Int m) => EvalM a -> m a
 runEval m = do
-  ctx <- ask
+  ctx <- asks fst
   counter <- get
   let (r, ctx') = runReader (runStateT (runExceptT m) counter) (ctx, M.empty)
   put ctx'
@@ -47,7 +47,7 @@ data Neutral
   | App Neutral Value
   deriving (Show)
 
-equal :: (MonadError String m, MonadReader Context m, MonadState Int m) => Value -> Value -> m Bool
+equal :: (MonadError String m, MonadReader (Context, Maybe Expr) m, MonadState Int m) => Value -> Value -> m Bool
 equal a b = runEval (equal' a b)
 
 equal' :: Value -> Value -> EvalM Bool
@@ -73,7 +73,7 @@ equal' va vb =
       bs <- equal' bx1 bx2
       return (ts && bs)
 
-eval :: (MonadError String m, MonadReader Context m, MonadState Int m) => Expr -> m Value
+eval :: (MonadError String m, MonadReader (Context, Maybe Expr) m, MonadState Int m) => Expr -> m Value
 eval = runEval . eval'
 
 eval' :: Expr -> EvalM Value
@@ -97,11 +97,14 @@ eval' = cata $ \case
     let body v = local (second (M.insert x v . const env')) b
     return $ Pi x t' body
 
-  Expr.Lambda _ x t b -> do
+  Expr.Lambda _ x (Just t) b -> do
     t' <- t
     env' <- asks snd
     let body v = local (second (M.insert x v . const env')) b
     return $ Lambda x t' body
+
+  Expr.Lambda pos _x Nothing _b ->
+    throwError $ displayPos pos ++ ": not implemented, eval Lambda with argument type annotation missing"
 
   Expr.App pos f a -> do
     f' <- f
@@ -110,8 +113,10 @@ eval' = cata $ \case
       Neutral n -> Neutral . App n <$> a
       _ -> throwError $ displayPos pos ++ ": application to non-function"
 
+  Expr.Annot _pos e _ -> e
 
-reify :: (MonadError String m, MonadReader Context m, MonadState Int m) => Value -> m Expr
+
+reify :: (MonadError String m, MonadReader (Context, Maybe Expr) m, MonadState Int m) => Value -> m Expr
 reify = runEval . reify'
 
 reify' :: Value -> EvalM Expr
@@ -127,7 +132,7 @@ reify' = \case
     x' <- Expr.refresh x
     t' <- reify' t
     b' <- reify' =<< b (Neutral (Var x'))
-    return $ Fix $ Expr.Lambda dummyPos x' t' b'
+    return $ Fix $ Expr.Lambda dummyPos x' (Just t') b'
   where
     reifyNeutral :: Neutral -> EvalM Expr
     reifyNeutral = \case

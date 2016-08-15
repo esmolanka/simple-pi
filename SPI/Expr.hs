@@ -43,11 +43,12 @@ data Variable
 type Expr = Fix ExprF
 
 data ExprF e
-  = Var      Position Variable
-  | Universe Position Int
-  | Pi       Position Variable e e
-  | Lambda   Position Variable e e
-  | App      Position e e
+  = Var      Position Variable              -- x
+  | Universe Position Int                   -- Type₀, Type₁, ...
+  | Pi       Position Variable e e          -- (x:A) → B
+  | Lambda   Position Variable (Maybe e) e  -- ƛ x:A. e
+  | App      Position e e                   -- f a
+  | Annot    Position e e                   -- a : A
     deriving (Show, Eq, Ord, Functor, Generic)
 
 getPos :: Expr -> Position
@@ -56,6 +57,7 @@ getPos (Fix (Universe pos _)) = pos
 getPos (Fix (Pi pos _ _ _)) = pos
 getPos (Fix (Lambda pos _ _ _)) = pos
 getPos (Fix (App pos _ _)) = pos
+getPos (Fix (Annot pos _ _)) = pos
 
 ----------------------------------------------------------------------
 -- Variables
@@ -79,10 +81,14 @@ subst env expr = runReaderT (cata alg expr) env
       return $ Fix $ Pi pos x' ty' body'
     alg (Lambda pos x ty body) = do
       x' <- refresh x
-      ty' <- ty
+      ty' <- sequence ty
       body' <- local (M.insert x (Fix $ Var pos x')) body
       return $ Fix $ Lambda pos x' ty' body'
     alg (App pos e1 e2) = do
+      e1' <- e1
+      e2' <- e2
+      return $ Fix $ App pos e1' e2'
+    alg (Annot pos e1 e2) = do
       e1' <- e1
       e2' <- e2
       return $ Fix $ App pos e1' e2'

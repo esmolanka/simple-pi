@@ -7,6 +7,7 @@
 module SPI.Grammar where
 
 import Control.Category ((>>>))
+import Data.Functor.Identity
 import Data.Coerce
 import GHC.Generics (Generic)
 
@@ -64,12 +65,20 @@ statementGrammar = match
 
 bindingGrammar
   :: Grammar SexpGrammar (Sexp :- Variable :- t) (e :- Variable :- t)
-  -> Grammar SexpGrammar (Sexp :- t) (Binding e :- t)
+  -> Grammar SexpGrammar (Sexp :- t) (Binding Identity e :- t)
 bindingGrammar g = with $ \binding ->
   list (
-    el variableGrammar >>>
-    el (kw (Kw ":"))   >>>
-    el g)              >>>
+    el variableGrammar  >>>
+    el (kw (Kw ":"))    >>>
+    el (g >>> iso Identity runIdentity)) >>>
+  binding
+
+bindingGrammar'
+  :: Grammar SexpGrammar (Sexp :- Variable :- t) (e :- Variable :- t)
+  -> Grammar SexpGrammar (Sexp :- t) (Binding Maybe e :- t)
+bindingGrammar' _g = with $ \binding ->
+  variableGrammar  >>>
+  pushForget Nothing >>>
   binding
 
 sugaredGrammar :: SexpG Sugared
@@ -78,83 +87,96 @@ sugaredGrammar = fixG $ match
       position >>> swap >>>
       list (
         el (sym "lambda")   >>>
-        el (list (rest (bindingGrammar sugaredGrammar))) >>>
+        el (list (rest (bindingGrammar' sugaredGrammar))) >>>
         el sugaredGrammar) >>>
       slambda)
   $ With (\spi ->
-      position >>> swap >>>
+      position               >>> swap >>>
       list (
-        el (sym "forall")  >>>
+        el (sym "forall")    >>>
         el (bindingGrammar sugaredGrammar) >>>
-        el (sym "->")      >>>
-        el sugaredGrammar) >>>
+        el (sym "->")        >>>
+        el sugaredGrammar)   >>>
       spi)
   $ With (\sarrow ->
-      position >>> swap >>>
+      position               >>> swap >>>
       list (
-        el (sym "->") >>>
-        el sugaredGrammar >>>
-        el sugaredGrammar >>>
+        el (sym "->")        >>>
+        el sugaredGrammar    >>>
+        el sugaredGrammar    >>>
         rest sugaredGrammar) >>>
       sarrow)
   $ With (\sapp ->
-      position >>> swap >>>
+      position               >>> swap >>>
       list (
-        el sugaredGrammar >>>
-        el sugaredGrammar >>>
+        el sugaredGrammar    >>>
+        el sugaredGrammar    >>>
         rest sugaredGrammar) >>>
       sapp)
+  $ With (\sannot ->
+      position               >>>
+      swap                   >>>
+      vect (
+        el sugaredGrammar    >>>
+        el sugaredGrammar)   >>>
+      sannot)
   $ With (\svar ->
-        position >>> swap >>>
-        variableGrammar >>>
-        svar)
+      position               >>> swap >>>
+      variableGrammar        >>>
+      svar)
   $ With (\suniv ->
-      position >>> swap >>>
-      starGrammar >>>
+      position               >>> swap >>>
+      starGrammar            >>>
       suniv)
   $ End
 
 ----------------------------------------------------------------------
 -- desugared grammars
 
-expressionGrammar :: SexpG Expr
-expressionGrammar = fixG $ match
-  $ With (\var  ->
-      position        >>>
-      swap            >>>
-      variableGrammar >>> var)
-  $ With (\univ ->
-      position        >>>
-      swap            >>>
-      starGrammar     >>> univ)
+-- expressionGrammar :: SexpG Expr
+-- expressionGrammar = fixG $ match
+--   $ With (\var  ->
+--       position        >>>
+--       swap            >>>
+--       variableGrammar >>> var)
+--   $ With (\univ ->
+--       position        >>>
+--       swap            >>>
+--       starGrammar     >>> univ)
 
-  $ With (\pi ->
-      position >>>
-      swap     >>>
-      list (
-        el (sym "forall")     >>>
-        el variableGrammar    >>>
-        el (kw (Kw ":"))      >>>
-        el expressionGrammar  >>>
-        el (sym "->")         >>>
-        el expressionGrammar) >>> pi)
-  $ With (\lam  ->
-      position >>>
-      swap     >>>
-      list (
-        el (sym "lambda")     >>>
-        el variableGrammar    >>>
-        el (kw (Kw ":"))      >>>
-        el expressionGrammar  >>>
-        el (sym ".")         >>>
-        el expressionGrammar) >>> lam)
-  $ With (\app  ->
-      position >>>
-      swap     >>>
-      list (
-        el expressionGrammar  >>>
-        el expressionGrammar) >>> app)
-  $ End
+--   $ With (\pi ->
+--       position >>>
+--       swap     >>>
+--       list (
+--         el (sym "forall")     >>>
+--         el variableGrammar    >>>
+--         el (kw (Kw ":"))      >>>
+--         el expressionGrammar  >>>
+--         el (sym "->")         >>>
+--         el expressionGrammar) >>> pi)
+--   $ With (\lam  ->
+--       position >>>
+--       swap     >>>
+--       list (
+--         el (sym "lambda")     >>>
+--         el variableGrammar    >>>
+--         el (kw (Kw ":"))      >>>
+--         el expressionGrammar  >>>
+--         el (sym ".")         >>>
+--         el expressionGrammar) >>> lam)
+--   $ With (\app  ->
+--       position >>>
+--       swap     >>>
+--       list (
+--         el expressionGrammar  >>>
+--         el expressionGrammar) >>> app)
+--   $ With (\annot  ->
+--       position >>>
+--       swap     >>>
+--       vect (
+--         el expressionGrammar  >>>
+--         el expressionGrammar) >>> annot)
+--   $ End
 
 variableGrammar :: SexpG Variable
 variableGrammar = match
