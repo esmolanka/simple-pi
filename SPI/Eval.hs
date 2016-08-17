@@ -30,6 +30,14 @@ checkType pos typ = do
         typesDontMatchError pos typ rtyp
   return typ
 
+eraseAnnot :: forall a m. (MonadError String m, MonadReader (Context, Maybe Expr) m, MonadState Int m) => m a -> m a
+eraseAnnot = local (second (const Nothing))
+
+withAnnot :: forall a m. (MonadError String m, MonadReader (Context, Maybe Expr) m, MonadState Int m) => Expr -> m a -> m a
+withAnnot ty = local (second (const (Just ty)))
+
+inContext :: forall a m. (MonadError String m, MonadReader (Context, Maybe Expr) m, MonadState Int m) => Variable -> Expr -> m a -> m a
+inContext var typ = local (first $ extendCtx var typ Nothing)
 
 inferType :: forall m. (MonadError String m, MonadReader (Context, Maybe Expr) m, MonadState Int m) => Expr -> m Expr
 inferType expr = para alg expr
@@ -42,12 +50,12 @@ inferType expr = para alg expr
         Just t  -> checkType pos t
 
     alg (Universe pos n) = do
-      return $ Fix $ Universe pos (succ n)
+      checkType pos $ Fix $ Universe pos (succ n)
 
     alg (Pi pos x (texpr, t) (_, b)) = do
-      k1 <- getUniverse =<< normalize =<< t
-      k2 <- getUniverse =<< normalize =<< local (first $ extendCtx x texpr Nothing) b
-      return $ Fix $ Universe pos (max k1 k2)
+      k1 <- getUniverse =<< normalize =<< eraseAnnot t
+      k2 <- getUniverse =<< normalize =<< inContext x texpr b
+      checkType pos $ Fix $ Universe pos (max k1 k2)
 
     alg (Lambda pos x Nothing (_, b)) = do
       mlamtype <- asks snd
@@ -56,29 +64,36 @@ inferType expr = para alg expr
           throwError $ displayPos pos ++ ": ambiguous type for variable " ++ show x
         Just ty -> do
           (_, targ, tbody) <- getPi ty
-          b' <- local (extendCtx x targ Nothing *** const (Just tbody)) b
+          b' <- inContext x targ $ withAnnot tbody b
           checkType pos (Fix $ Pi pos x targ b')
 
     alg (Lambda pos x (Just (texpr, t)) (_, b)) = do
-      _ <- getUniverse =<< normalize =<< t
-      b' <- local (first $ extendCtx x texpr Nothing) b
-      return $ Fix $ Pi pos x texpr b'
+      mlamtype <- asks snd
+      b' <- case mlamtype of
+        Just pi -> do
+          (_, targ, tbody) <- getPi =<< normalize pi
+          _ <- getUniverse =<< normalize =<< withAnnot targ t
+          inContext x texpr $ withAnnot tbody b
+        Nothing -> do
+          _ <- getUniverse =<< normalize =<< t
+          inContext x texpr $ eraseAnnot b
+      checkType pos $ Fix $ Pi pos x texpr b'
 
     alg (App pos (_, f) (argexpr, a)) = do
-      (x, targ, tbody) <- getPi =<< normalize =<< f
-      targ' <- normalize =<< a
+      (x, targ, tbody) <- getPi =<< normalize =<< eraseAnnot f
+      targ' <- normalize =<< eraseAnnot a
       eq <- equal targ targ'
       unless eq $
         typesDontMatchError pos targ targ'
-      subst (M.singleton x argexpr) tbody
+      checkType pos =<< subst (M.singleton x argexpr) tbody
 
     alg (Annot pos (_, e) (texpr, t)) = do
       _ <- getUniverse =<< normalize =<< t
-      inferred <- local (second (const (Just texpr))) e
+      inferred <- withAnnot texpr e
       eq <- equal inferred texpr
       unless eq $
         typesDontMatchError pos inferred texpr
-      return inferred
+      checkType pos inferred
 
 normalize :: forall m. (MonadError String m, MonadReader (Context, Maybe Expr) m, MonadState Int m) => Expr -> m Expr
 normalize = Value.reify <=< Value.eval

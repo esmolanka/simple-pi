@@ -1,10 +1,9 @@
-
 module SPI.Pretty
   ( displayExpr
   , displayPos
   ) where
 
-import qualified Data.ByteString.Lazy.Char8 as B8
+import qualified Data.Text.Lazy as T
 import Data.List (intercalate)
 
 import Language.Sexp (Position (..))
@@ -16,7 +15,7 @@ import SPI.Sugar
 
 displayExpr :: Expr -> String
 displayExpr =
-  either ("printing error: " ++) (B8.unpack) .
+  either ("printing error: " ++) (T.unpack) .
     encodePrettyWith sugaredGrammar . sugar
 
 displayPos :: Position -> String

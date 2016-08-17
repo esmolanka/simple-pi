@@ -13,7 +13,7 @@ import Control.Monad.State.Strict
 import Control.Monad.Reader
 import Control.Monad.Except
 
-import Data.ByteString.Lazy.Char8 (pack, unpack)
+import Data.Text.Lazy (pack, unpack)
 
 import Language.Sexp (parseSexps)
 import Language.SexpGrammar
