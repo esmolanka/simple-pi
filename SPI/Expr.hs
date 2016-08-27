@@ -1,5 +1,7 @@
+{-# LANGUAGE DeriveFoldable      #-}
 {-# LANGUAGE DeriveFunctor       #-}
 {-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE DeriveTraversable   #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -12,11 +14,6 @@ module SPI.Expr
   , getPos
   , dummyPos
   , Position
-  , Context
-  , freshCtx
-  , lookupType
-  , lookupValue
-  , extendCtx
   , Fix (..)
   , unFix
   ) where
@@ -49,7 +46,7 @@ data ExprF e
   | Lambda   Position Variable (Maybe e) e  -- ƛ x:A. e
   | App      Position e e                   -- f a
   | Annot    Position e e                   -- a : A
-    deriving (Show, Eq, Ord, Functor, Generic)
+    deriving (Show, Eq, Ord, Functor, Generic, Foldable, Traversable)
 
 getPos :: Expr -> Position
 getPos (Fix (Var pos _)) = pos
@@ -97,25 +94,6 @@ refresh :: forall m. (MonadState Int m) => Variable -> m Variable
 refresh (VarStr x)   = modify succ >> GenSym x   <$> get
 refresh (GenSym x _) = modify succ >> GenSym x   <$> get
 refresh Dummy        = modify succ >> GenSym "_" <$> get
-
-----------------------------------------------------------------------
--- Context
-
-newtype Context = Context (Map Variable (Expr, Maybe Expr))
-  deriving (Show, Eq, Ord)
-
-lookupType :: Variable -> Context -> Maybe Expr
-lookupType v (Context c) = fst <$> M.lookup v c
-
-lookupValue :: Variable -> Context -> Maybe (Maybe Expr)
-lookupValue v (Context c) = snd <$> M.lookup v c
-
-extendCtx :: Variable -> Expr -> Maybe Expr -> Context -> Context
-extendCtx v t b (Context c) = Context $ M.insert v (t, b) c
-
-freshCtx :: Context
-freshCtx = Context $ M.fromList
-  [ (VarStr "*", (Fix $ Universe dummyPos 1, Just $ Fix $ Universe dummyPos 0)) ]
 
 ----------------------------------------------------------------------
 -- Utils

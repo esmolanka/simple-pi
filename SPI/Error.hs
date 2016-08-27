@@ -19,6 +19,6 @@ getUniverse :: (MonadError String m) => Expr -> m Int
 getUniverse (Fix (Universe _pos x)) = return x
 getUniverse other = throwError $ displayPos (getPos other) ++ ": type expected:\n" ++ displayExpr other
 
-getPi  :: (MonadError String m) => Expr -> m (Variable, Expr, Expr)
-getPi (Fix (Pi _pos x t1 t2)) = return (x, t1, t2)
-getPi other = throwError $ displayPos (getPos other) ++ ": function expected:\n" ++ displayExpr other
+getPi  :: (MonadError String m) => Position -> String -> Expr -> m (Variable, Expr, Expr)
+getPi _ _ (Fix (Pi _pos x t1 t2)) = return (x, t1, t2)
+getPi pos msg other = throwError $ displayPos pos ++ ": " ++ msg ++ "; Function expected:\n" ++ displayExpr other

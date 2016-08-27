@@ -15,16 +15,17 @@ import Data.Functor.Foldable (Fix (..), cata)
 import qualified Data.Map as M
 import Data.Map (Map)
 
-import SPI.Expr (Variable (..), Expr, dummyPos, Context, lookupValue)
+import SPI.Expr (Variable (..), Expr, dummyPos)
 import qualified SPI.Expr as Expr
 import SPI.Error
 import SPI.Pretty
+import SPI.Env
 
 type EvalM = ExceptT String (StateT Int (Reader (Context, Map Variable Value)))
 
-runEval  :: (MonadError String m, MonadReader (Context, Maybe Expr) m, MonadState Int m) => EvalM a -> m a
+runEval  :: (MonadError String m, MonadReader Env m, MonadState Int m) => EvalM a -> m a
 runEval m = do
-  ctx <- asks fst
+  ctx <- asks gamma
   counter <- get
   let (r, ctx') = runReader (runStateT (runExceptT m) counter) (ctx, M.empty)
   put ctx'
@@ -34,7 +35,7 @@ data Value
   = Neutral Neutral
   | Universe Int
   | Pi Variable Value (Value -> EvalM Value)
-  | Lambda Variable Value (Value -> EvalM Value)
+  | Lambda Variable (Maybe Value) (Value -> EvalM Value)
 
 instance Show Value where
   show (Neutral n) = "(Neutral " ++ show n ++ ")"
@@ -47,7 +48,7 @@ data Neutral
   | App Neutral Value
   deriving (Show)
 
-equal :: (MonadError String m, MonadReader (Context, Maybe Expr) m, MonadState Int m) => Value -> Value -> m Bool
+equal :: (MonadError String m, MonadReader Env m, MonadState Int m) => Value -> Value -> m Bool
 equal a b = runEval (equal' a b)
 
 equal' :: Value -> Value -> EvalM Bool
@@ -55,7 +56,7 @@ equal' va vb =
   case (va, vb) of
     (Neutral a, Neutral b)         -> eqNeutral a b
     (Universe n, Universe m)       -> return (n == m)
-    (Pi x t b, Pi _ t' b')         -> eqAbs x t b t' b'
+    (Pi x t b, Pi _ t' b')         -> eqAbs x (Just t) b (Just t') b'
     (Lambda x t b, Lambda _ t' b') -> eqAbs x t b t' b'
     _ -> return False
   where
@@ -65,15 +66,19 @@ equal' va vb =
         (App n' v, App m' w) -> (&&) <$> eqNeutral n' m' <*> equal' v w
         _ -> return False
 
-    eqAbs x t b t' b' = do
-      ts <- equal' t t'
+    eqAbs x mt b mt' b' = do
+      ts <- case (mt, mt') of
+              (Nothing, Nothing) -> return True
+              (Just t, Just t')  -> equal' t t'
+              (Just _, Nothing)  -> return False
+              (Nothing, Just _)  -> return False
       x' <- Neutral . Var <$> Expr.refresh x
       bx1 <- b x'
       bx2 <- b' x'
       bs <- equal' bx1 bx2
       return (ts && bs)
 
-eval :: (MonadError String m, MonadReader (Context, Maybe Expr) m, MonadState Int m) => Expr -> m Value
+eval :: (MonadError String m, MonadReader Env m, MonadState Int m) => Expr -> m Value
 eval = runEval . eval'
 
 eval' :: Expr -> EvalM Value
@@ -97,14 +102,11 @@ eval' = cata $ \case
     let body v = local (second (M.insert x v . const env')) b
     return $ Pi x t' body
 
-  Expr.Lambda _ x (Just t) b -> do
-    t' <- t
+  Expr.Lambda _ x mt b -> do
+    t' <- sequence mt
     env' <- asks snd
     let body v = local (second (M.insert x v . const env')) b
     return $ Lambda x t' body
-
-  Expr.Lambda pos _x Nothing _b ->
-    throwError $ displayPos pos ++ ": not implemented, eval Lambda with argument type annotation missing"
 
   Expr.App pos f a -> do
     f' <- f
@@ -115,24 +117,23 @@ eval' = cata $ \case
 
   Expr.Annot _pos e _ -> e
 
-
-reify :: (MonadError String m, MonadReader (Context, Maybe Expr) m, MonadState Int m) => Value -> m Expr
+reify :: (MonadError String m, MonadReader Env m, MonadState Int m) => Value -> m Expr
 reify = runEval . reify'
 
 reify' :: Value -> EvalM Expr
 reify' = \case
   Neutral n  -> reifyNeutral n
   Universe n -> return $ Fix $ Expr.Universe dummyPos n
-  Pi x t b   -> do
+  Pi x t b -> do
     x' <- Expr.refresh x
     t' <- reify' t
     b' <- reify' =<< b (Neutral (Var x'))
     return $ Fix $ Expr.Pi dummyPos x' t' b'
-  Lambda x t b   -> do
+  Lambda x t b -> do
     x' <- Expr.refresh x
-    t' <- reify' t
+    mt' <- traverse reify' t
     b' <- reify' =<< b (Neutral (Var x'))
-    return $ Fix $ Expr.Lambda dummyPos x' (Just t') b'
+    return $ Fix $ Expr.Lambda dummyPos x' mt' b'
   where
     reifyNeutral :: Neutral -> EvalM Expr
     reifyNeutral = \case

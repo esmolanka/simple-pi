@@ -76,10 +76,20 @@ bindingGrammar g = with $ \binding ->
 bindingGrammar'
   :: Grammar SexpGrammar (Sexp :- Variable :- t) (e :- Variable :- t)
   -> Grammar SexpGrammar (Sexp :- t) (Binding Maybe e :- t)
-bindingGrammar' _g = with $ \binding ->
-  variableGrammar  >>>
-  pushForget Nothing >>>
-  binding
+bindingGrammar' g = with $ \binding ->
+  coproduct
+    [ variableGrammar  >>>
+      pushForget Nothing
+    , list (
+        el variableGrammar  >>>
+        el (kw (Kw ":"))    >>>
+        el (g >>> just)
+        )
+    ] >>> binding
+  where
+    just = partialIso "Just" Just unJust
+    unJust Nothing = Left $ unexpected "Nothing"
+    unJust (Just a) = Right a
 
 sugaredGrammar :: SexpG Sugared
 sugaredGrammar = fixG $ match

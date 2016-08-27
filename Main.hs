@@ -6,8 +6,6 @@
 
 module Main where
 
--- import System.Console.Haskeline
-
 import Control.Arrow (first)
 import Control.Monad.State.Strict
 import Control.Monad.Reader
@@ -22,13 +20,14 @@ import SPI.Sugar
 import SPI.Expr
 import SPI.Eval
 import SPI.Grammar
+import SPI.Env
 
 type EvalT m = ExceptT String (StateT (Context, Int) m)
 
-eval :: (Monad m) => (ExceptT String (ReaderT (Context, Maybe Expr) (State Int)) a) -> EvalT m a
+eval :: (Monad m) => (ExceptT String (ReaderT Env (State Int)) a) -> EvalT m a
 eval f = do
   (ctx, n) <- get
-  let (res, n') = runState (runReaderT (runExceptT f) (ctx, Nothing)) n
+  let (res, n') = runState (runReaderT (runExceptT f) (Env { gamma = ctx, annotation = Any })) n
   put (ctx, n')
   either throwError return res
 
