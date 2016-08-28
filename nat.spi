@@ -1,0 +1,35 @@
+;; Nat inductive type
+
+;;                 Γ ctx
+;; ---------------------------------------- Nat-formation
+;;             Γ ⊦ Nat : Type
+
+(Parameter Nat Type)
+
+;;             Γ ⊦ Nat : Type
+;; ---------------------------------------- Nat-intro-Z
+;;             Γ ⊦ Zero : Nat
+
+(Parameter Zero Nat)
+
+;;        Γ ⊦ Nat : Type  Γ ⊦ n : Nat
+;; ---------------------------------------- Nat-intro-S
+;;             Γ ⊦ Succ n : Nat
+
+(Parameter Succ (-> Nat Nat))
+
+(Parameter nat-elim
+  (forall (m :: (-> Nat Type)) ->
+          (-> (m Zero)
+              (forall (l :: Nat) -> (-> (m l) (m (Succ l))))
+              (forall (k :: Nat) -> (m k)))))
+
+;; (Definition nat-elim ...)
+
+(Definition e-plus
+  (nat-elim
+    (lambda ((_ :: Nat)) (-> Nat Nat))
+    (lambda ((n :: Nat)) n)
+    (lambda ((k :: Nat) (rec :: (-> Nat Nat)) (n :: Nat)) (Succ (rec n)))))
+
+(Check e-plus)

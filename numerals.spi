@@ -1,3 +1,5 @@
+(Load "nat.spi")
+
 (Definition numeral (forall (A :: Type) -> (-> (-> A A) A A)) :: Type₁)
 
 (Definition zero  (lambda (A f x) x) :: numeral)
@@ -5,7 +7,8 @@
 (Definition two   (lambda (A f x) (f (f x))) :: numeral)
 (Definition three (lambda (A f x) (f (f (f x)))) :: numeral)
 
-(Definition plus (lambda (m n A f x) (m A f (n A f x))) :: (-> numeral numeral numeral))
+(Definition plus  (lambda (m n A f x) (m A f (n A f x)))
+               :: (-> numeral numeral numeral))
 
 (Check plus)
 (Eval (plus three two Nat Succ Zero))
