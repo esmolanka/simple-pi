@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module SPI.Eval where
+module SPI.Typecheck where
 
 import Control.Monad.State
 import Control.Monad.Reader
@@ -35,19 +35,19 @@ checkType pos typ = do
         typesDontMatchError pos typ rtyp
   return typ
 
-expectPi :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => m (Maybe Expr, Maybe Expr)
+expectPi :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => m (Maybe Variable, Maybe Expr, Maybe Expr)
 expectPi = do
   ann <- asks annotation
   case ann of
-    Any -> return (Nothing, Nothing)
-    LamArg ty -> return (Just ty, Nothing)
+    Any -> return (Nothing, Nothing, Nothing)
+    LamArg ty -> return (Nothing, Just ty, Nothing)
     Exactly ty -> do
-      (_, arg, body) <- getPi dummyPos "expecting Pi" =<< normalize ty
-      return (Just arg, Just body)
+      (var, arg, body) <- getPi dummyPos "expecting Pi" =<< normalize ty
+      return (Just var, Just arg, Just body)
 
 checkArgType :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => Position -> Variable -> Maybe Expr -> m Expr
 checkArgType pos var mty = do
-  (mty', _) <- expectPi
+  (_, mty', _) <- expectPi
   case (mty, mty') of
     (Nothing, Nothing) ->
       throwError $ displayPos pos ++ ": cannot infer type for variable " ++ show var
@@ -78,9 +78,13 @@ inferType expr = para alg expr
       checkType pos $ Fix $ Universe pos (max k1 k2)
 
     alg (Lambda pos arg marg (_, b)) = do
-      argty   <- checkArgType pos arg (fmap fst marg)
-      bodyty' <- fmap snd expectPi
-      bodyty  <- inContext arg argty $ maybe eraseAnnot withAnnot bodyty' $ b
+      argty <- checkArgType pos arg (fmap fst marg)
+      (arg', _, bodyty') <- expectPi
+      bodyty'' <-
+        case (arg', bodyty') of
+          (Just x, Just expr) -> Just <$> subst (M.singleton x (Fix $ Var pos arg)) expr
+          _ -> return bodyty'
+      bodyty  <- inContext arg argty $ maybe eraseAnnot withAnnot bodyty'' $ b
       checkType pos (Fix $ Pi pos arg argty bodyty)
 
     alg (App pos (_, f) (argexpr, a)) = do

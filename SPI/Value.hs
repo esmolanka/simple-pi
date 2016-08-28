@@ -38,9 +38,9 @@ data Value
   | Lambda Variable (Maybe Value) (Value -> EvalM Value)
 
 instance Show Value where
-  show (Neutral n) = "(Neutral " ++ show n ++ ")"
-  show (Universe n) = "(Universe " ++ show n ++ ")"
-  show (Pi x _ _) = "(Pi " ++ show x ++ " ...)"
+  show (Neutral n)    = "(Neutral " ++ show n ++ ")"
+  show (Universe n)   = "(Universe " ++ show n ++ ")"
+  show (Pi x _ _)     = "(Pi " ++ show x ++ " ...)"
   show (Lambda x _ _) = "(Lambda " ++ show x ++ " ...)"
 
 data Neutral

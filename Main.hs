@@ -18,7 +18,7 @@ import Language.SexpGrammar
 
 import SPI.Sugar
 import SPI.Expr
-import SPI.Eval
+import SPI.Typecheck
 import SPI.Grammar
 import SPI.Env
 
