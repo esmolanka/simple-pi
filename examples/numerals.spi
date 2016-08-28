@@ -12,3 +12,14 @@
 
 (Check plus)
 (Eval (plus three two Nat Succ Zero))
+
+
+(Definition three-old
+  (lambda ((A :: Type) (f :: (-> A A)) (x :: A))
+    (f (f (f x)))))
+
+(Definition plus-old
+  (lambda ((m :: numeral) (n :: numeral) (A :: Type) (f :: (-> A A)) (x :: A))
+    (m A f (n A f x))))
+
+(Eval (plus-old three-old two Nat Succ Zero))
