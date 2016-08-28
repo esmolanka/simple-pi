@@ -22,7 +22,7 @@ import SPI.Sugar
 
 data Statement
   = Load       FilePath
-  | Definition Variable Sugared {- <var> = <expr> -}
+  | Definition Variable Sugared (Maybe Sugared) {- <var> = <expr> -}
   | Parameter  Variable Sugared {- <var> : <expr> -}
   | Check      Sugared
   | Eval       Sugared
@@ -39,7 +39,8 @@ statementGrammar = match
       list (
         el (sym "Definition") >>>
         el variableGrammar    >>>
-        el sugaredGrammar)    >>> defn)
+        el sugaredGrammar     >>>
+        props (Kw ":" .:? sugaredGrammar))    >>> defn)
   $ With (\param ->
       list (
         el (sym "Parameter")  >>>

@@ -46,8 +46,9 @@ processStatement stmt =
         stmt <- either throwError return (parseSexp statementGrammar s)
         processStatement stmt
       return Nothing
-    (Definition var expr) -> do
-      ty <- eval (inferType $ desugar expr)
+    (Definition var expr mtype) -> do
+      let expr' = maybe expr (\ty -> Fix $ SAnnot dummyPos expr ty) mtype
+      ty <- eval (inferType $ desugar expr')
       modify (first (extendCtx var ty (Just (desugar expr))))
       return Nothing
     (Parameter var ty) -> do
