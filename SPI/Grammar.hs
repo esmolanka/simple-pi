@@ -191,9 +191,18 @@ sugaredGrammar = fixG $ match
 variableGrammar :: SexpG Variable
 variableGrammar = match
   $ With (\str -> symbol' >>> str)
-  $ With (\strn -> vect (el symbol' >>> el int) >>> strn)
+  $ With (\strn -> symbol' >>> parseVarN >>> unpair >>> strn)
   $ With (\dummy -> sym "_" >>> dummy)
   $ End
+  where
+    parseVarN :: Grammar SexpGrammar (String :- t) ((String, Int) :- t)
+    parseVarN =
+      partialOsi "Var/#"
+        (\(v,n) -> v ++ "/" ++ show n)
+        (\str -> case break (=='/') str of
+                   (var, '/':num) -> Right (var, read num)
+                   _ -> Left (expected "Var/N")
+        )
 
 starGrammar :: SexpG Int
 starGrammar = list (el (sym "type") >>> el int)
