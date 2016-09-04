@@ -6,12 +6,13 @@ module SPI.Pretty
 import qualified Data.Text.Lazy as T
 import Data.List (intercalate)
 
-import Language.Sexp (Position (..))
 import Language.SexpGrammar (encodePrettyWith)
 
 import SPI.Expr
 import SPI.Grammar
 import SPI.Sugar
+
+import Language.SimplePi.Types (Position (..))
 
 displayExpr :: Expr -> String
 displayExpr =

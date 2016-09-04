@@ -16,31 +16,37 @@ library
   hs-source-dirs:      src
   ghc-options:         -Wall -fno-warn-name-shadowing -fno-warn-unused-do-bind
   exposed-modules:
+    SPI.Env
+    SPI.Error
     SPI.Expr
-    SPI.Typecheck
-    SPI.Sugar
     SPI.Grammar
     SPI.Pretty
+    SPI.Sugar
+    SPI.Typecheck
     SPI.Value
-    SPI.Error
-    SPI.Env
+
+    Language.SimplePi
+    Language.SimplePi.Lexer
+    Language.SimplePi.LexerInterface
+    Language.SimplePi.Parser
+    Language.SimplePi.Pretty
+    Language.SimplePi.Token
+    Language.SimplePi.Types
+
   default-language:    Haskell2010
-  build-depends:       base >= 4.7 && < 5, mtl, transformers, containers, haskeline, sexp-grammar,
-                       bytestring, text, semigroups, recursion-schemes
+  build-depends:       base >= 4.7 && < 5, mtl, transformers, containers, sexp-grammar,
+                       bytestring, text, semigroups, recursion-schemes, wl-pprint-text, array
 
 executable spi
   main-is:             Main.hs
   ghc-options:         -Wall -fno-warn-name-shadowing -fno-warn-unused-do-bind
   default-language:    Haskell2010
-  build-depends:       simple-pi,
-                       base >= 4.7 && < 5, mtl, transformers, containers, haskeline, sexp-grammar,
-                       bytestring, text, semigroups, recursion-schemes
+  build-depends:       simple-pi, base >= 4.7 && < 5, mtl, transformers, containers, bytestring, text, sexp-grammar
 
-executable spi-tests
+test-suite spi-tests
+  type:                exitcode-stdio-1.0
   hs-source-dirs:      tests
   main-is:             Tests.hs
   ghc-options:         -Wall -fno-warn-name-shadowing -fno-warn-unused-do-bind
   default-language:    Haskell2010
-  build-depends:       simple-pi,
-                       base >= 4.7 && < 5, mtl, transformers, containers, haskeline, sexp-grammar,
-                       bytestring, text, semigroups, recursion-schemes
+  build-depends:       simple-pi, base >= 4.7 && < 5, mtl, transformers, containers, text, sexp-grammar, tasty, tasty-hunit

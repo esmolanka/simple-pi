@@ -1,25 +1,27 @@
-(Load "nat.spi")
 
-(Definition numeral (forall (A :: Type) -> (-> (-> A A) A A)) :: Type₁)
+Load nat.
 
-(Definition zero  (lambda (A f x) x) :: numeral)
-(Definition one   (lambda (A f x) (f x)) :: numeral)
-(Definition two   (lambda (A f x) (f (f x))) :: numeral)
-(Definition three (lambda (A f x) (f (f (f x)))) :: numeral)
+numeral : Type₁.
+numeral =  (A : Type) -> (A -> A) -> A -> A.
 
-(Definition plus  (lambda (m n A f x) (m A f (n A f x)))
-               :: (-> numeral numeral numeral))
+zero : numeral.
+zero = \A f x => x.
 
-(Check plus)
-(Eval (plus three two Nat Succ Zero))
+one : numeral.
+one = \A f x => f x.
 
+two : numeral.
+two = \A f x => f (f x).
 
-(Definition three-old
-  (lambda ((A :: Type) (f :: (-> A A)) (x :: A))
-    (f (f (f x)))))
+three : numeral.
+three = \A f x => f (f (f x)).
 
-(Definition plus-old
-  (lambda ((m :: numeral) (n :: numeral) (A :: Type) (f :: (-> A A)) (x :: A))
-    (m A f (n A f x))))
+plus : numeral -> numeral -> numeral.
+plus =
+  \m n =>
+    \A f x =>
+      m A f (n A f x).
 
-(Eval (plus-old three-old two Nat Succ Zero))
+Check plus.
+
+Eval plus three two Nat Succ Zero.

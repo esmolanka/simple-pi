@@ -1,35 +1,39 @@
-;; Nat inductive type
+-- Nat inductive type
 
-;;                 Γ ctx
-;; ---------------------------------------- Nat-formation
-;;             Γ ⊦ Nat : Type
+--                 Γ ctx
+-- ---------------------------------------- Nat-formation
+--             Γ ⊦ Nat : Type
 
-(Parameter Nat Type)
+-- Nat : Type
 
-;;             Γ ⊦ Nat : Type
-;; ---------------------------------------- Nat-intro-Z
-;;             Γ ⊦ Zero : Nat
+Nat : Type.
 
-(Parameter Zero Nat)
+--             Γ ⊦ Nat : Type
+-- ---------------------------------------- Nat-intro-Z
+--             Γ ⊦ Zero : Nat
 
-;;        Γ ⊦ Nat : Type  Γ ⊦ n : Nat
-;; ---------------------------------------- Nat-intro-S
-;;             Γ ⊦ Succ n : Nat
+-- Zero : Nat
 
-(Parameter Succ (-> Nat Nat))
+Zero : Nat.
 
-(Parameter nat-elim
-  (forall (m :: (-> Nat Type)) ->
-          (-> (m Zero)
-              (forall (l :: Nat) -> (-> (m l) (m (Succ l))))
-              (forall (k :: Nat) -> (m k)))))
+--        Γ ⊦ Nat : Type  Γ ⊦ n : Nat
+-- ---------------------------------------- Nat-intro-S
+--             Γ ⊦ Succ n : Nat
 
-;; (Definition nat-elim ...)
+-- Succ : Nat → Nat
 
-(Definition e-plus
-  (nat-elim
-    (lambda ((_ :: Nat)) (-> Nat Nat))
-    (lambda ((n :: Nat)) n)
-    (lambda ((k :: Nat) (rec :: (-> Nat Nat)) (n :: Nat)) (Succ (rec n)))))
+Succ : Nat -> Nat.
 
-(Check e-plus)
+natElim : (m : (Nat -> Type))
+       -> m Zero
+       -> ((l : Nat) -> m l -> m (Succ l))
+       -> ((k : Nat) -> m k).
+
+ePlus : Nat -> Nat -> Nat.
+ePlus =
+  natElim (\ (_ : Nat) => Nat -> Nat)
+          (\ (n : Nat) => n)
+          (\ (k : Nat) (rec : (Nat -> Nat)) (n : Nat) => Succ (rec n)).
+
+Check ePlus.
+

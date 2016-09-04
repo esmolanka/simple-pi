@@ -2,79 +2,76 @@
 {-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE DeriveFoldable    #-}
 
-module SPI.Sugar where
+module SPI.Sugar
+  ( module SPI.Sugar
+  , Fix (..)
+  ) where
 
+import Data.Text (pack)
 import Data.Foldable
 import Data.Functor.Identity
 import Data.Functor.Foldable (cata)
-import Data.Monoid (Any (..))
-import GHC.Generics (Generic)
+import Data.Monoid (Any (..), (<>))
 
 import SPI.Expr
+import qualified Language.SimplePi.Types as AST
 
-type Sugared = Fix SugaredF
-
-data Binding f e = Binding Variable (f e)
-    deriving (Show, Eq, Ord, Foldable, Functor, Generic)
-
-data SugaredF e
-  = SLambda   Position [Binding Maybe e] e
-  | SPi       Position (Binding Identity e) e
-  | SArrow    Position e e [e]
-  | SApp      Position e e [e]
-  | SAnnot    Position e e
-  | SVar      Position Variable
-  | SUniverse Position Int
-    deriving (Show, Eq, Ord, Functor, Foldable, Generic)
-
-desugar :: Sugared -> Expr
+desugar :: AST.Expr -> Expr
 desugar = cata alg
   where
-    alg (SLambda pos bnds body) =
-      foldr (\(Binding var e) rest -> Fix $ Lambda pos var e rest) body bnds
-    alg (SPi pos (Binding var (Identity ty)) body) =
-      Fix $ Pi pos var ty body
-    alg (SArrow pos a b rest) =
+    alg (AST.Lambda pos bnds body) =
+      foldr (\(AST.Binding var e) rest -> Fix $ Lambda pos (desugarIdent var) e rest) body bnds
+    alg (AST.Pi pos (AST.Binding var (Identity ty)) body) =
+      Fix $ Pi pos (desugarIdent var) ty body
+    alg (AST.Arrow pos a b rest) =
       let es = a : b : rest
       in foldr (\e rest -> Fix $ Pi pos Dummy e rest) (last es) (init es)
-    alg (SApp pos a b rest) =
+    alg (AST.App pos a b rest) =
       foldl (\acc e -> Fix $ App pos acc e) a (b:rest)
-    alg (SAnnot pos e t) =
+    alg (AST.Annot pos e t) =
       Fix $ Annot pos e t
-    alg (SVar pos var) =
-      Fix $ Var pos var
-    alg (SUniverse pos u) =
+    alg (AST.Var pos var) =
+      Fix $ Var pos (desugarIdent var)
+    alg (AST.Universe pos u) =
       Fix $ Universe pos u
 
-sugar :: Expr -> Sugared
+desugarIdent :: AST.Ident -> Variable
+desugarIdent (AST.Ident t) = VarStr t
+
+sugar :: Expr -> AST.Expr
 sugar = cata alg
   where
-    alg :: ExprF Sugared -> Sugared
+    alg :: ExprF (AST.Expr) -> AST.Expr
 
-    alg (Lambda pos x t b) = sugarLambda pos x t b
+    alg (Lambda pos x t b) = sugarLambda pos (sugarIdent x) t b
 
     alg (Pi pos x t b)
-      | uses x b           = Fix $ SPi pos (Binding x (Identity t)) b
-      | otherwise          = sugarArrow pos t b
+      | uses (sugarIdent x) b = Fix $ AST.Pi pos (AST.Binding (sugarIdent x) (Identity t)) b
+      | otherwise             = sugarArrow pos t b
 
     alg (App pos f a)      = sugarApply pos f a
 
-    alg (Annot pos e t)    = Fix $ SAnnot pos e t
+    alg (Annot pos e t)    = Fix $ AST.Annot pos e t
 
-    alg (Var pos v)        = Fix $ SVar pos v
-    alg (Universe pos n)   = Fix $ SUniverse pos n
+    alg (Var pos v)        = Fix $ AST.Var pos (sugarIdent v)
+    alg (Universe pos n)   = Fix $ AST.Universe pos n
 
-    sugarLambda pos x t (Fix (SLambda _ bnds body)) = Fix $ SLambda pos (Binding x t : bnds) body
-    sugarLambda pos x t body = Fix $ SLambda pos [Binding x t] body
+    sugarLambda pos x t (Fix (AST.Lambda _ bnds body)) = Fix $ AST.Lambda pos (AST.Binding x t : bnds) body
+    sugarLambda pos x t body = Fix $ AST.Lambda pos [AST.Binding x t] body
 
-    sugarArrow pos t (Fix (SArrow _ a b cs)) = Fix $ SArrow pos t a (b : cs)
-    sugarArrow pos t b = Fix (SArrow pos t b [])
+    sugarArrow pos t (Fix (AST.Arrow _ a b cs)) = Fix $ AST.Arrow pos t a (b : cs)
+    sugarArrow pos t b = Fix (AST.Arrow pos t b [])
 
-    sugarApply pos (Fix (SApp _ f a bs)) c = Fix $ SApp pos f a (bs ++ [c])
-    sugarApply pos f a = Fix $ SApp pos f a []
+    sugarApply pos (Fix (AST.App _ f a bs)) c = Fix $ AST.App pos f a (bs ++ [c])
+    sugarApply pos f a = Fix $ AST.App pos f a []
 
-uses :: Variable -> Sugared -> Bool
+sugarIdent :: Variable -> AST.Ident
+sugarIdent (VarStr x) = AST.Ident x
+sugarIdent (GenSym x n) = AST.Ident $ x <> pack "_" <> pack (show n)
+sugarIdent Dummy = AST.Ident (pack "_")
+
+uses :: AST.Ident -> AST.Expr -> Bool
 uses var = getAny . cata alg
   where
-    alg (SVar _ var') = Any (var == var')
+    alg (AST.Var _ var') = Any (var == var')
     alg e = fold e

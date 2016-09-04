@@ -15,11 +15,13 @@ import Data.Functor.Foldable (Fix (..), cata)
 import qualified Data.Map as M
 import Data.Map (Map)
 
-import SPI.Expr (Variable (..), Expr, dummyPos)
+import SPI.Expr (Variable (..), Expr)
 import qualified SPI.Expr as Expr
 import SPI.Error
 import SPI.Pretty
 import SPI.Env
+
+import Language.SimplePi.Types (dummyPos)
 
 type EvalM = ExceptT String (StateT Int (Reader (Context, Map Variable Value)))
 
@@ -33,7 +35,7 @@ runEval m = do
 
 data Value
   = Neutral Neutral
-  | Universe Int
+  | Universe Integer
   | Pi Variable Value (Value -> EvalM Value)
   | Lambda Variable (Maybe Value) (Value -> EvalM Value)
 

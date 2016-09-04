@@ -16,8 +16,10 @@ import SPI.Expr
 import SPI.Pretty
 import SPI.Error
 import qualified SPI.Value as Value
-
 import SPI.Env
+
+import Language.SimplePi.Types (Position (..), dummyPos)
+
 
 checkType :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => Position -> Expr -> m Expr
 checkType pos typ = do

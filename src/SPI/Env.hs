@@ -1,5 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE OverloadedStrings   #-}
 
 module SPI.Env where
 
@@ -12,6 +13,7 @@ import Data.Map (Map)
 import qualified Data.Map as M
 
 import SPI.Expr
+import Language.SimplePi.Types (dummyPos)
 
 newtype Context = Context (Map Variable (Expr, Maybe Expr))
   deriving (Show, Eq, Ord)

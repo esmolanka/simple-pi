@@ -3,25 +3,25 @@
 {-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE DeriveTraversable   #-}
 {-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module SPI.Expr
   ( Expr
   , ExprF (..)
   , Variable (..)
-  , subst
-  , refresh
-  , getPos
-  , dummyPos
-  , Position
   , Fix (..)
   , unFix
+  , getPos
+  , subst
+  , refresh
   ) where
 
 import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Except
 
+import Data.Text (Text)
 import Data.Coerce
 import Data.Functor.Foldable (Fix (..), cata)
 import Data.Map (Map)
@@ -29,11 +29,11 @@ import qualified Data.Map as M
 
 import GHC.Generics (Generic)
 
-import Language.Sexp (Position, dummyPos)
+import Language.SimplePi.Types (Position)
 
 data Variable
-  = VarStr String
-  | GenSym String Int
+  = VarStr Text
+  | GenSym Text Int
   | Dummy
     deriving (Show, Eq, Ord, Generic)
 
@@ -41,7 +41,7 @@ type Expr = Fix ExprF
 
 data ExprF e
   = Var      Position Variable              -- x
-  | Universe Position Int                   -- Type₀, Type₁, ...
+  | Universe Position Integer               -- Type₀, Type₁, ...
   | Pi       Position Variable e e          -- (x:A) → B
   | Lambda   Position Variable (Maybe e) e  -- ƛ x:A. e
   | App      Position e e                   -- f a

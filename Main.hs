@@ -11,16 +11,18 @@ import Control.Monad.State.Strict
 import Control.Monad.Reader
 import Control.Monad.Except
 
+import qualified Data.Text.Lazy.IO as T
 import Data.Text.Lazy (pack, unpack)
 
-import Language.Sexp (parseSexps)
 import Language.SexpGrammar
 
 import SPI.Sugar
-import SPI.Expr
+import qualified SPI.Expr as Internal
 import SPI.Typecheck
-import SPI.Grammar
+import SPI.Grammar (sugaredGrammar)
 import SPI.Env
+
+import Language.SimplePi
 
 type EvalT m = ExceptT String (StateT (Context, Int) m)
 
@@ -31,7 +33,7 @@ eval f = do
   put (ctx, n')
   either throwError return res
 
-showExpr :: (Monad m) => Expr -> EvalT m String
+showExpr :: (Monad m) => Internal.Expr -> EvalT m String
 showExpr =
   either throwError (return . unpack) .
     encodePrettyWith sugaredGrammar . sugar
@@ -40,37 +42,35 @@ processStatement :: Statement -> EvalT IO (Maybe String)
 processStatement stmt =
   case stmt of
     (Load filename) -> do
-      prog <- liftIO (readFile filename)
-      sexps <- either throwError return $ parseSexps filename (pack prog)
-      forM_ sexps $ \s -> do
-        stmt <- either throwError return (parseSexp statementGrammar s)
-        processStatement stmt
+      prog <- liftIO (T.readFile filename)
+      stmts <- either throwError return $ parseProgram prog
+      mapM_ processStatement stmts
       return Nothing
-    (Definition var expr mtype) -> do
-      let expr' = maybe expr (\ty -> Fix $ SAnnot dummyPos expr ty) mtype
-      ty <- eval (inferType $ desugar expr')
-      modify (first (extendCtx var ty (Just (desugar expr))))
+    (Definition idn expr) -> do
+      mtype <- gets (lookupType (desugarIdent idn) . fst)
+      let var = desugarIdent idn
+          expr' = maybe (desugar expr) (\ty -> Fix $ Internal.Annot dummyPos (desugar expr) ty) mtype
+      ty <- eval (inferType expr')
+      modify (first (extendCtx var ty (Just expr')))
       return Nothing
-    (Parameter var ty) -> do
+    (Parameter idn ty) -> do
+      let var = desugarIdent idn
       modify (first (extendCtx var (desugar ty) Nothing))
       return Nothing
     (Check expr) -> do
       expr' <- eval (inferType $ desugar expr)
       fmap Just (showExpr expr')
     (Eval expr) -> do
+      ty <- eval (inferType $ desugar expr)
       expr' <- eval (normalize $ desugar expr)
-      fmap Just (showExpr expr')
-    (AssertType expr ty) -> do
-      eval $ do
-        ty' <- inferType (desugar expr)
-        checkEqual (desugar ty) ty'
-      return Nothing
+      ty' <- showExpr ty
+      expr' <- showExpr expr'
+      return (Just $ expr' ++ "\n: " ++ ty')
 
 evalProg :: String -> EvalT IO ()
 evalProg input = do
-  sexps <- either throwError return $ parseSexps "<stdin>" (pack input)
-  forM_ sexps $ \s -> do
-    stmt <- either throwError return (parseSexp statementGrammar s)
+  stmts <- either throwError return $ parseProgram (pack input)
+  forM_ stmts $ \stmt -> do
     response <- processStatement stmt
     case response of
       Nothing -> return ()
