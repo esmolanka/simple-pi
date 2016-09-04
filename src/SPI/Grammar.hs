@@ -1,50 +1,26 @@
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE TypeOperators     #-}
 
-module SPI.Grammar where
+module SPI.Grammar (displayExpr) where
 
 import Control.Category ((>>>))
-import Data.Functor.Identity
+
 import Data.Coerce
+import Data.Functor.Identity
+import qualified Data.Text.Lazy as T
 
 import Language.SexpGrammar
 import Language.SexpGrammar.Generic
 
 import SPI.Expr
+import SPI.Sugar
 
 import qualified Language.SimplePi.Types as AST
 
-----------------------------------------------------------------------
--- Statement grammar
-
-statementGrammar :: SexpG AST.Statement
-statementGrammar = match
-  $ With (\load ->
-      list (
-        el (sym "Load")       >>>
-        el string')           >>> load)
-  $ With (\param ->
-      list (
-        el (sym "Parameter")  >>>
-        el variableGrammar    >>>
-        el sugaredGrammar)    >>> param)
-  $ With (\defn ->
-      list (
-        el (sym "Definition") >>>
-        el variableGrammar    >>>
-        el sugaredGrammar)    >>> defn)
-  $ With (\check ->
-      list (
-        el (sym "Check")      >>>
-        el sugaredGrammar)    >>> check)
-  $ With (\eval ->
-      list (
-        el (sym "Eval")       >>>
-        el sugaredGrammar)    >>> eval)
-  $ End
+displayExpr :: Expr -> String
+displayExpr =
+  either ("printing error: " ++) (T.unpack) .
+    encodePrettyWith sugaredGrammar . sugar
 
 ----------------------------------------------------------------------
 -- sugared grammars

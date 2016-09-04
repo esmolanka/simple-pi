@@ -18,7 +18,6 @@ import Data.Map (Map)
 import SPI.Expr (Variable (..), Expr)
 import qualified SPI.Expr as Expr
 import SPI.Error
-import SPI.Pretty
 import SPI.Env
 
 import Language.SimplePi.Types (dummyPos)

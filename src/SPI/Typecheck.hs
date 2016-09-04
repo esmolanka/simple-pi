@@ -9,14 +9,13 @@ import Control.Monad.Reader
 import Control.Monad.Except
 
 import Data.Functor.Foldable (para)
-
 import qualified Data.Map as M
 
-import SPI.Expr
-import SPI.Pretty
-import SPI.Error
-import qualified SPI.Value as Value
 import SPI.Env
+import SPI.Error
+import SPI.Expr
+import SPI.Grammar
+import qualified SPI.Value as Value
 
 import Language.SimplePi.Types (Position (..), dummyPos)
 

@@ -20,7 +20,6 @@ library
     SPI.Error
     SPI.Expr
     SPI.Grammar
-    SPI.Pretty
     SPI.Sugar
     SPI.Typecheck
     SPI.Value

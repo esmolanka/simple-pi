@@ -19,7 +19,7 @@ import Language.SexpGrammar
 import SPI.Sugar
 import qualified SPI.Expr as Internal
 import SPI.Typecheck
-import SPI.Grammar (sugaredGrammar)
+import SPI.Grammar
 import SPI.Env
 
 import Language.SimplePi
@@ -32,11 +32,6 @@ eval f = do
   let (res, n') = runState (runReaderT (runExceptT f) (Env { gamma = ctx, annotation = Any })) n
   put (ctx, n')
   either throwError return res
-
-showExpr :: (Monad m) => Internal.Expr -> EvalT m String
-showExpr =
-  either throwError (return . unpack) .
-    encodePrettyWith sugaredGrammar . sugar
 
 processStatement :: Statement -> EvalT IO (Maybe String)
 processStatement stmt =
@@ -59,13 +54,11 @@ processStatement stmt =
       return Nothing
     (Check expr) -> do
       expr' <- eval (inferType $ desugar expr)
-      fmap Just (showExpr expr')
+      return (Just (displayExpr expr'))
     (Eval expr) -> do
       ty <- eval (inferType $ desugar expr)
       expr' <- eval (normalize $ desugar expr)
-      ty' <- showExpr ty
-      expr' <- showExpr expr'
-      return (Just $ expr' ++ "\n: " ++ ty')
+      return (Just $ displayExpr expr' ++ "\n: " ++ displayExpr ty)
 
 evalProg :: String -> EvalT IO ()
 evalProg input = do
