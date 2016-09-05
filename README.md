@@ -50,7 +50,7 @@ Nat : Type.
 Zero : Nat.
 Succ : Nat -> Nat.
 
-natElim : (m : (Nat -> Type))
+natElim : (m : Nat -> Type)
        -> m Zero
        -> ((l : Nat) -> m l -> m (Succ l))
        -> ((k : Nat) -> m k).
@@ -59,7 +59,7 @@ ePlus : Nat -> Nat -> Nat.
 ePlus =
   natElim (\ (_ : Nat) => Nat -> Nat)
           (\ (n : Nat) => n)
-          (\ (k : Nat) (rec : (Nat -> Nat)) (n : Nat) => Succ (rec n)).
+          (\ (k : Nat) (rec : Nat -> Nat) (n : Nat) => Succ (rec n)).
 
 Check ePlus.
 ~~~

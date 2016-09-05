@@ -30,6 +30,8 @@ import Language.SimplePi.Types
 %tokentype { LocatedBy Position Token }
 %monad { Either String }
 
+%expect 0
+
 %token
   '('            { L _ (TokPunct "("   ) }
   ')'            { L _ (TokPunct ")"   ) }
@@ -75,14 +77,14 @@ Expression :: { Expr }
   | sepBy2(AppExpr, '->')                { mkArrow dummyPos $1 }
 
 LamBnd :: { [ Binding Maybe Expr ] }
-  : '(' list1(ident) ':' AppExpr ')'     { map (\idn -> Binding (Ident $ getIdent $ extract idn) (Just $4)) $2 }
+  : '(' list1(ident) ':' Expression ')'  { map (\idn -> Binding (Ident $ getIdent $ extract idn) (Just $4)) $2 }
   | ident                                { [ Binding (Ident $ getIdent $ extract $1) Nothing ] }
 
 PiBnd :: { Located (Binding Identity Expr) }
-  : '(' ident ':' AppExpr ')'            { Binding (Ident $ getIdent $ extract $2) (Identity $4) @@ $1 }
+  : '(' ident ':' Expression ')'         { Binding (Ident $ getIdent $ extract $2) (Identity $4) @@ $1 }
 
 AppExpr :: { Expr }
-  : list1(AtomExpr)                         { mkApplication $1 }
+  : list1(AtomExpr)                      { mkApplication $1 }
 
 AtomExpr :: { Expr }
   : num                                  { Fix $ Universe (position $1) (getNum $ extract $1) }
