@@ -41,7 +41,7 @@ mkAlexInput source = AlexInput
   }
   where
     initPos :: LineCol
-    initPos = LineCol 1 0
+    initPos = LineCol 1 1
     stripBOM :: TL.Text -> TL.Text
     stripBOM xs =
       fromMaybe xs $

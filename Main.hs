@@ -38,7 +38,7 @@ processStatement stmt =
   case stmt of
     (Load filename) -> do
       prog <- liftIO (T.readFile filename)
-      stmts <- either throwError return $ parseProgram prog
+      stmts <- either throwError return $ parseProgram filename prog
       mapM_ processStatement stmts
       return Nothing
     (Definition idn expr) -> do
@@ -62,7 +62,7 @@ processStatement stmt =
 
 evalProg :: String -> EvalT IO ()
 evalProg input = do
-  stmts <- either throwError return $ parseProgram (pack input)
+  stmts <- either throwError return $ parseProgram "stdin" (pack input)
   forM_ stmts $ \stmt -> do
     response <- processStatement stmt
     case response of

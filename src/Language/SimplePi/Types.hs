@@ -1,7 +1,8 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE DeriveFoldable    #-}
+{-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Language.SimplePi.Types
   ( Position (..)
@@ -16,9 +17,10 @@ module Language.SimplePi.Types
   , Fix (..)
   ) where
 
-import Data.Text
-import Data.Functor.Identity
 import Data.Functor.Foldable (Fix (..))
+import Data.Functor.Identity
+import Data.Text (Text)
+import qualified Data.Text.Lazy as Lazy
 import Text.PrettyPrint.Leijen.Text
 
 import GHC.Generics
@@ -67,7 +69,7 @@ getPosition (Fix e) =
 
 -- | File position
 data Position = Position
-  { posFileName :: !FilePath
+  { posFileName :: !Text
   , posLine     :: {-# UNPACK #-} !Int
   , posColumn   :: {-# UNPACK #-} !Int
   } deriving (Show, Ord, Eq)
@@ -76,4 +78,5 @@ dummyPos :: Position
 dummyPos = Position "<no location information>" 1 0
 
 instance Pretty Position where
-  pretty = pretty . show
+  pretty (Position fn line col) =
+    text (Lazy.fromStrict fn) <> colon <> int line <> colon <> int col

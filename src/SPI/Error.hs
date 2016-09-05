@@ -4,6 +4,7 @@ module SPI.Error where
 
 import Control.Monad.Except
 import Data.List
+import Data.Text (unpack)
 
 import Language.SimplePi.Types (Position (..), dummyPos)
 import SPI.Expr
@@ -11,7 +12,7 @@ import SPI.Grammar
 
 displayPos :: Position -> String
 displayPos (Position file line col) =
-  intercalate ":" [ file, show line, show col ]
+  intercalate ":" [ unpack file, show line, show col ]
 
 unknownIdentifierError :: (MonadError String m) => Position -> Variable -> m a
 unknownIdentifierError pos var =
