@@ -12,9 +12,7 @@ import Control.Monad.Reader
 import Control.Monad.Except
 
 import qualified Data.Text.Lazy.IO as T
-import Data.Text.Lazy (pack, unpack)
-
-import Language.SexpGrammar
+import Data.Text.Lazy (pack)
 
 import SPI.Sugar
 import qualified SPI.Expr as Internal

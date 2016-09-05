@@ -1,28 +1,28 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import Control.Monad.State.Strict
 import Control.Monad.Reader
 import Control.Monad.Except
 
-import Data.Text.Lazy (unpack)
-
-import Language.SexpGrammar (encodePrettyWith)
+import Data.Text (pack)
 
 import SPI.Env
 import SPI.Expr
 import SPI.Typecheck
 
-import SPI.Sugar (sugar)
-import SPI.Grammar (sugaredGrammar)
+import SPI.Grammar (displayExpr)
+import Language.SimplePi (dummyPos)
 
 app :: Expr -> Expr -> Expr
 app f a = Fix $ App dummyPos f a
 
 lambda :: String -> Maybe Expr -> Expr -> Expr
-lambda arg mtyp body = Fix $ Lambda dummyPos (VarStr arg) mtyp body
+lambda arg mtyp body = Fix $ Lambda dummyPos (VarStr (pack arg)) mtyp body
 
 forall :: String -> Expr -> Expr -> Expr
-forall var a b = Fix $ Pi dummyPos (VarStr var) a b
+forall var a b = Fix $ Pi dummyPos (VarStr (pack var)) a b
 
 infixr 2 ~>
 (~>) :: Expr -> Expr -> Expr
@@ -33,12 +33,12 @@ infix 9 .:
 (.:) expr typ = Fix $ Annot dummyPos expr typ
 
 var :: String -> Expr
-var name = Fix $ Var dummyPos $ VarStr name
+var name = Fix $ Var dummyPos $ VarStr (pack name)
 
 typ :: Expr
 typ = Fix $ Universe dummyPos 0
 
-typn :: Int -> Expr
+typn :: Integer -> Expr
 typn = Fix . Universe dummyPos
 
 infer :: Expr -> Expr
@@ -47,9 +47,7 @@ infer expr =
   in either (error . ("\n" ++)) id res
 
 prn :: Expr -> IO ()
-prn =
-  either error (putStrLn . unpack) .
-    encodePrettyWith sugaredGrammar . sugar
+prn = putStrLn . displayExpr
 
 test_inferpi1 :: Expr
 test_inferpi1 =
