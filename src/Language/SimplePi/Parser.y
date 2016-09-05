@@ -30,7 +30,7 @@ import Language.SimplePi.Types
 %tokentype { LocatedBy Position Token }
 %monad { Either String }
 
-%expect 0
+%expect 3
 
 %token
   '('            { L _ (TokPunct "("   ) }
@@ -74,7 +74,7 @@ Expression :: { Expr }
   : AppExpr                              { $1 }
   | '\\' list1(LamBnd) '=>' Expression   { Fix $ Lambda (position $1) (concat $2) $4 }
   | PiBnd '->' Expression                { Fix $ Pi (position $1) (extract $1) $3 }
-  | sepBy2(AppExpr, '->')                { mkArrow dummyPos $1 }
+  | AppExpr '->' sepBy1(Expression, '->') { mkArrow (position $2) ($1 : $3) }
 
 LamBnd :: { [ Binding Maybe Expr ] }
   : '(' list1(ident) ':' Expression ')'  { map (\idn -> Binding (Ident $ getIdent $ extract idn) (Just $4)) $2 }

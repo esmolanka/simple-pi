@@ -46,7 +46,7 @@ $charesc     = [abfnrtv\\\"]
 @string      = $graphic # [\"\\] | " " | @escape
 
 $idinitial   = [$alpha \_]
-$idsubseq    = [$idinitial $digit $uninonspace]
+$idsubseq    = [$idinitial $digit $uninonspace \-]
 @identifier  = $idinitial $idsubseq*
 @keyword     = ":" $idsubseq+
 
