@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE DeriveFoldable    #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module SPI.Sugar
   ( module SPI.Sugar
@@ -36,7 +37,10 @@ desugar = cata alg
       Fix $ Universe pos u
 
 desugarIdent :: AST.Ident -> Variable
-desugarIdent (AST.Ident t) = VarStr t
+desugarIdent (AST.Ident t) =
+  case t of
+    "_" -> Dummy
+    _   -> VarStr t
 
 sugar :: Expr -> AST.Expr
 sugar = cata alg

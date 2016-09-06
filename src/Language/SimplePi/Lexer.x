@@ -46,7 +46,7 @@ $charesc     = [abfnrtv\\\"]
 @string      = $graphic # [\"\\] | " " | @escape
 
 $idinitial   = [$alpha \_]
-$idsubseq    = [$idinitial $digit $uninonspace \-]
+$idsubseq    = [$idinitial $digit $uninonspace \- \']
 @identifier  = $idinitial $idsubseq*
 @keyword     = ":" $idsubseq+
 
@@ -65,6 +65,7 @@ $whitespace ^ "--" @any*  ;
 @lambda            { TokPunct      `via` id }
 "="                { TokPunct      `via` id }
 "."                { TokPunct      `via` id }
+","                { TokPunct      `via` id }
 
 "Load"             { TokReserved   `via` id }
 "Eval"             { TokReserved   `via` id }

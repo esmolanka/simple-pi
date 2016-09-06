@@ -19,7 +19,6 @@ import qualified SPI.Value as Value
 
 import Language.SimplePi.Types (Position (..), dummyPos)
 
-
 checkType :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => Position -> Expr -> m Expr
 checkType pos typ = do
   ann <- asks annotation

@@ -41,6 +41,7 @@ import Language.SimplePi.Types
   '\\'           { L _ (TokPunct "\\"  ) }
   '='            { L _ (TokPunct "="   ) }
   '.'            { L _ (TokPunct "."   ) }
+  ','            { L _ (TokPunct ","   ) }
   ident          { L _ (TokIdentifier _) }
   num            { L _ (TokNumber     _) }
 
@@ -73,15 +74,18 @@ Statement :: { Statement }
 Expression :: { Expr }
   : AppExpr                              { $1 }
   | '\\' list1(LamBnd) '=>' Expression   { Fix $ Lambda (position $1) (concat $2) $4 }
-  | PiBnd '->' Expression                { Fix $ Pi (position $1) (extract $1) $3 }
-  | AppExpr '->' sepBy1(Expression, '->') { mkArrow (position $2) ($1 : $3) }
+  | PiBnd '->' Expression                { foldr (\bnd rest -> Fix $ Pi (position $1) bnd rest) $3 (extract $1) }
+  | AppExpr '->' sepBy1(Expression, '->')
+                                         { mkArrow (position $2) ($1 : $3) }
 
 LamBnd :: { [ Binding Maybe Expr ] }
-  : '(' list1(ident) ':' Expression ')'  { map (\idn -> Binding (Ident $ getIdent $ extract idn) (Just $4)) $2 }
+  : '(' sepBy1(ident, ',') ':' Expression ')'
+                                         { map (\idn -> Binding (Ident $ getIdent $ extract idn) (Just $4)) $2 }
   | ident                                { [ Binding (Ident $ getIdent $ extract $1) Nothing ] }
 
-PiBnd :: { Located (Binding Identity Expr) }
-  : '(' ident ':' Expression ')'         { Binding (Ident $ getIdent $ extract $2) (Identity $4) @@ $1 }
+PiBnd :: { Located [Binding Identity Expr] }
+  : '(' sepBy1(ident, ',') ':' Expression ')'
+                                         { map (\idn -> Binding (Ident $ getIdent $ extract idn) (Identity $4)) $2  @@ $1 }
 
 AppExpr :: { Expr }
   : list1(AtomExpr)                      { mkApplication $1 }
