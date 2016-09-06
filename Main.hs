@@ -12,12 +12,13 @@ import Control.Monad.Reader
 import Control.Monad.Except
 
 import qualified Data.Text.Lazy.IO as T
-import Data.Text.Lazy (pack)
+import Data.Text.Lazy (Text, pack)
+
+import Data.Monoid ((<>))
 
 import SPI.Sugar
 import qualified SPI.Expr as Internal
 import SPI.Typecheck
-import SPI.Grammar
 import SPI.Env
 
 import Language.SimplePi
@@ -31,7 +32,7 @@ eval f = do
   put (ctx, n')
   either throwError return res
 
-processStatement :: Statement -> EvalT IO (Maybe String)
+processStatement :: Statement -> EvalT IO (Maybe Text)
 processStatement stmt =
   case stmt of
     (Load filename) -> do
@@ -52,11 +53,11 @@ processStatement stmt =
       return Nothing
     (Check expr) -> do
       expr' <- eval (inferType $ desugar expr)
-      return (Just (displayExpr expr'))
+      return (Just (prettyExpr $ sugar expr'))
     (Eval expr) -> do
       ty <- eval (inferType $ desugar expr)
       expr' <- eval (normalize $ desugar expr)
-      return (Just $ displayExpr expr' ++ "\n: " ++ displayExpr ty)
+      return (Just $ prettyExpr (sugar expr') <> pack "\n: " <> prettyExpr (sugar ty))
 
 evalProg :: String -> EvalT IO ()
 evalProg input = do
@@ -65,7 +66,7 @@ evalProg input = do
     response <- processStatement stmt
     case response of
       Nothing -> return ()
-      Just a  -> liftIO $ putStrLn a
+      Just a  -> liftIO $ T.putStrLn a
 
 main :: IO ()
 main = do
