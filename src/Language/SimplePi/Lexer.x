@@ -21,7 +21,6 @@ import qualified Data.ByteString.Lazy.Char8 as B8
 import Language.SimplePi.LexerInterface
 import Language.SimplePi.Token
 import Language.SimplePi.Types (Position (..))
-
 }
 
 $whitechar   = [\ \t\n\r\f\v]
@@ -32,25 +31,24 @@ $uninonspace = \x02
 $uniany      = [$unispace $uninonspace]
 @any         = (. | $uniany)
 
+$lambda      = \x03
+$forall      = \x04
+$arrow       = \x05
+$darrow      = \x06
+
 $digit       = 0-9
-$hex         = [0-9 A-F a-f]
 $alpha       = [a-z A-Z]
 
-$graphic     = [$alpha $digit \!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~ \(\)\,\;\[\]\`\{\} \:\"\'\_ $uninonspace]
-
-@intnum      = [\-\+]? $digit+
-@scinum      = [\-\+]? $digit+ ([\.]$digit+)? ([eE] [\-\+]? $digit+)?
-
-$charesc     = [abfnrtv\\\"]
-@escape      = \\ ($charesc | $digit+ | x $hex+)
-@string      = $graphic # [\"\\] | " " | @escape
+@natural     = $digit+
 
 $idinitial   = [$alpha \_]
 $idsubseq    = [$idinitial $digit $uninonspace \- \']
 @identifier  = $idinitial $idsubseq*
-@keyword     = ":" $idsubseq+
 
-@lambda      = [\\]
+@lambda      = [\\ $lambda]
+@forall      = "forall" | [$forall]
+@arrow       = "->" | [$arrow]
+@darrow      = "=>" | "." | [$darrow]
 
 :-
 
@@ -60,20 +58,21 @@ $whitespace ^ "--" @any*  ;
 "("                { TokPunct      `via` id }
 ")"                { TokPunct      `via` id }
 ":"                { TokPunct      `via` id }
-"->"               { TokPunct      `via` id }
-"=>"               { TokPunct      `via` id }
-@lambda            { TokPunct      `via` id }
+@lambda            { just TokLambda         }
+@forall            { just TokForall         }
+@arrow             { just TokArrow          }
+@darrow            { just TokDblArrow       }
 "="                { TokPunct      `via` id }
-"."                { TokPunct      `via` id }
 ","                { TokPunct      `via` id }
 
 "Load"             { TokReserved   `via` id }
 "Eval"             { TokReserved   `via` id }
 "Check"            { TokReserved   `via` id }
 
-@intnum            { TokNumber     `via` readInteger }
+@natural           { TokNumber     `via` readInteger }
 @identifier        { TokIdentifier `via` id          }
-.                  { TokUnknown    `via` T.head      }
+
+@any               { TokUnknown    `via` T.head      }
 
 {
 
@@ -101,10 +100,14 @@ alexScanTokens input =
     AlexEOF -> []
     AlexError (AlexInput {aiInput, aiLineCol = LineCol line col}) ->
       error $ "Lexical error at line " ++ show line ++ " column " ++ show col ++
-        ". Remaining input: " ++ TL.unpack (TL.take 1000 aiInput)
+              ". Remaining input: " ++ TL.unpack (TL.take 1000 aiInput)
     AlexSkip input _ -> alexScanTokens input
     AlexToken input' tokLen action ->
-      action (aiLineCol input) inputText : alexScanTokens input'
+      let pos@(LineCol _ col) = aiLineCol input
+          tokens = action pos inputText : alexScanTokens input'
+      in if col == 1
+         then L pos TokNewline : tokens
+         else tokens
       where
         -- It is safe to take token length from input because every byte Alex
         -- sees corresponds to exactly one character, even if character is a

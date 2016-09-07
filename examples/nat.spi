@@ -1,39 +1,36 @@
+
 -- Nat inductive type
 
 --                 Γ ctx
 -- ---------------------------------------- Nat-formation
 --             Γ ⊦ Nat : Type
 
--- Nat : Type
-
-Nat : Type.
+Nat : Type
 
 --             Γ ⊦ Nat : Type
 -- ---------------------------------------- Nat-intro-Z
 --             Γ ⊦ Zero : Nat
 
--- Zero : Nat
-
-Zero : Nat.
+Zero : Nat
 
 --        Γ ⊦ Nat : Type  Γ ⊦ n : Nat
 -- ---------------------------------------- Nat-intro-S
 --             Γ ⊦ Succ n : Nat
 
--- Succ : Nat → Nat
+Succ : Nat -> Nat
 
-Succ : Nat -> Nat.
+nat-elim : ∀ (m : Nat -> Type)
+        -> m Zero
+        -> (∀ (l : Nat) -> m l -> m (Succ l))
+        -> (k : Nat)
+        -> m k
 
-natElim : (m : Nat -> Type)
-       -> m Zero
-       -> ((l : Nat) -> m l -> m (Succ l))
-       -> ((k : Nat) -> m k).
+Check nat-elim
 
-ePlus : Nat -> Nat -> Nat.
-ePlus =
-  natElim (\ (_ : Nat) => Nat -> Nat)
-          (\ (n : Nat) => n)
-          (\ (k : Nat) (rec : Nat -> Nat) (n : Nat) => Succ (rec n)).
+e-plus : Nat -> Nat -> Nat
+e-plus = nat-elim
+  (λ (_ : Nat). Nat -> Nat)
+  (λ (n : Nat). n)
+  (λ (k : Nat) (rec : (Nat -> Nat)) (n : Nat). Succ (rec n))
 
-Check ePlus.
-
+Eval e-plus

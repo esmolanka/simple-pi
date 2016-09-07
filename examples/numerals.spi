@@ -1,27 +1,27 @@
 
-Load nat.
+Load nat
 
-numeral : Type₁.
-numeral =  (A : Type) -> (A -> A) -> A -> A.
+numeral : Type₁
+numeral = (A : Type) -> (A -> A) -> A -> A
 
-zero : numeral.
-zero = \A f x => x.
+zero : numeral
+zero = \A f x => x
 
-one : numeral.
-one = \A f x => f x.
+one : numeral
+one = \A f x => f x
 
-two : numeral.
-two = \A f x => f (f x).
+two : numeral
+two = \A f x => f (f x)
 
-three : numeral.
-three = \A f x => f (f (f x)).
+three : numeral
+three = \A f x => f (f (f x))
 
-plus : numeral -> numeral -> numeral.
+plus : numeral -> numeral -> numeral
 plus =
   \m n =>
     \A f x =>
-      m A f (n A f x).
+      m A f (n A f x)
 
-Check plus.
+Check plus
 
-Eval plus three two Nat Succ Zero.
+Eval plus three two Nat Succ Zero

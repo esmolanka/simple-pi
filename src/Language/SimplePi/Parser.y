@@ -33,14 +33,15 @@ import Language.SimplePi.Types
 %expect 3
 
 %token
+  NL             { L _ TokNewline        }
   '('            { L _ (TokPunct "("   ) }
   ')'            { L _ (TokPunct ")"   ) }
   ':'            { L _ (TokPunct ":"   ) }
-  '->'           { L _ (TokPunct "->"  ) }
-  '=>'           { L _ (TokPunct "=>"  ) }
-  '\\'           { L _ (TokPunct "\\"  ) }
+  '->'           { L _ TokArrow          }
+  '=>'           { L _ TokDblArrow       }
+  '\\'           { L _ TokLambda         }
+  "forall"       { L _ TokForall         }
   '='            { L _ (TokPunct "="   ) }
-  '.'            { L _ (TokPunct "."   ) }
   ','            { L _ (TokPunct ","   ) }
   ident          { L _ (TokIdentifier _) }
   num            { L _ (TokNumber     _) }
@@ -63,11 +64,11 @@ Program :: { [Statement] }
 -- Statement
 
 Statement :: { Statement }
-  : "Load" ident '.'                     { Load $ mkFileName $ getIdent $ extract $2 }
-  | ident ':' Expression '.'             { Parameter (Ident $ getIdent $ extract $1) $3 }
-  | ident '=' Expression '.'             { Definition (Ident $ getIdent $ extract $1) $3 }
-  | "Check" Expression '.'               { Check $2 }
-  | "Eval" Expression '.'                { Eval $2 }
+  : NL "Load" ident                      { Load $ mkFileName $ getIdent $ extract $3 }
+  | NL ident ':' Expression              { Parameter (Ident $ getIdent $ extract $2) $4 }
+  | NL ident '=' Expression              { Definition (Ident $ getIdent $ extract $2) $4 }
+  | NL "Check" Expression                { Check $3 }
+  | NL "Eval" Expression                 { Eval $3 }
 
 -- Expression
 
@@ -75,8 +76,8 @@ Expression :: { Expr }
   : AppExpr                              { $1 }
   | '\\' list1(LamBnd) '=>' Expression   { Fix $ Lambda (position $1) (concat $2) $4 }
   | PiBnd '->' Expression                { foldr (\bnd rest -> Fix $ Pi (position $1) bnd rest) $3 (extract $1) }
-  | AppExpr '->' sepBy1(Expression, '->')
-                                         { mkArrow (position $2) ($1 : $3) }
+  | "forall" PiBnd '->' Expression       { foldr (\bnd rest -> Fix $ Pi (position $2) bnd rest) $4 (extract $2) }
+  | AppExpr '->' sepBy1(Expression,'->') { mkArrow (position $2) ($1 : $3) }
 
 LamBnd :: { [ Binding Maybe Expr ] }
   : '(' sepBy1(ident, ',') ':' Expression ')'

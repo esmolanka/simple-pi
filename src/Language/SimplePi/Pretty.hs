@@ -17,7 +17,7 @@ ppBnd :: Binding Maybe Expr -> Doc
 ppBnd (Binding idn (Just e)) =
   parens (ppIdent idn <+> colon <+> ppExpr 0 e)
 ppBnd (Binding idn Nothing) =
-  ppIdent idn
+  space <> ppIdent idn
 
 ppBnd' :: Binding Identity Expr -> Doc
 ppBnd' (Binding idn (Identity e)) =
@@ -34,17 +34,17 @@ ppExprF p expr =
       group $ nest 2 $ vsep $ map (ppExpr 8) (a : b : rest)
 
     Pi _ bnd e         -> pParen (p >= 5) $
-      group $ nest 2 $ ppBnd' bnd </>  text "->" <+> ppExpr 3 e
+      group $ nest 2 $ ppBnd' bnd </>  text "→" <+> ppExpr 3 e
 
     Arrow _ a b rest   ->
       let (lst, bdy) = (last &&& init) (a : b : rest)
       in group $ nest 2 $ foldr ppArrow (ppExpr 3 lst) bdy
       where
         ppArrow :: Expr -> Doc -> Doc
-        ppArrow e tail = pParen (p >= 4) $ ppExpr 5 e </> text "->" <+> tail
+        ppArrow e tail = pParen (p >= 4) $ ppExpr 5 e </> text "→" <+> tail
 
     Lambda   _ bnds e  -> pParen (p >= 1) $
-      group $ text "\\" <> fillSep (map ppBnd bnds) <+> nest 2 (text "=>" </> ppExpr 1 e)
+      group $ text "λ" <> fillSep (map ppBnd bnds) <> nest 2 (text "." </> ppExpr 1 e)
 
     Var _ idn ->
       ppIdent idn

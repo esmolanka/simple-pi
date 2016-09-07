@@ -10,9 +10,14 @@ import Text.PrettyPrint.Leijen.Text
 
 data Token
   = TokPunct      Text
+  | TokLambda
+  | TokForall
+  | TokArrow
+  | TokDblArrow
   | TokReserved   Text
   | TokIdentifier { getIdent :: Text }
   | TokNumber     { getNum   :: Integer }
+  | TokNewline
   | TokUnknown    Char
     deriving (Show, Eq)
 
@@ -36,7 +41,12 @@ infix 9 @@
 
 instance Pretty Token where
   pretty (TokPunct      s) = "punctuation" <+> squotes (text (fromStrict s))
+  pretty TokLambda         = "lambda"
+  pretty TokForall         = "forall"
+  pretty TokArrow          = "arrow"
+  pretty TokDblArrow       = "double-arrow"
   pretty (TokReserved   s) = "reserved" <+> dquotes (text (fromStrict s))
   pretty (TokIdentifier s) = "identifier" <+> dquotes (text (fromStrict s))
   pretty (TokNumber     n) = "number" <+> integer n
+  pretty TokNewline        = "new-line"
   pretty (TokUnknown    u) = "unknown lexeme" <+> text (pack (show u))

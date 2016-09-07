@@ -4,62 +4,61 @@ Status](https://travis-ci.org/esmolanka/simple-pi.svg?branch=master)](https://tr
 Experiments with dependently typed lambda calculus.
 
 ~~~
-Nat  : Type.
-Zero : Nat.
-Succ : Nat -> Nat.
+Nat  : Type
+Zero : Nat
+Succ : Nat -> Nat
 
-numeral : Type₁.
-numeral = (A : Type) -> (A -> A) -> A -> A.
+numeral : Type₁
+numeral = ∀ (A : Type) -> (A -> A) -> A -> A
 
-zero : numeral.
-zero = \A f x => x.
+zero : numeral
+zero = λ A f x. x
 
-one : numeral.
-one = \A f x => f x.
+one : numeral
+one = λ A f x. f x
 
-two : numeral.
-two = \A f x => f (f x).
+two : numeral
+two = λ A f x. f (f x)
 
-three : numeral.
-three = \A f x => f (f (f x)).
+three : numeral
+three = λ A f x. f (f (f x))
 
-plus : numeral -> numeral -> numeral.
+plus : numeral -> numeral -> numeral
 plus =
-  \m n =>
-    \A f x =>
-      m A f (n A f x).
+  λ m n.
+    λ A f x.
+      m A f (n A f x)
 
-Check plus.
--- (-> (forall (A/142 :: (type 0))
---        ->
---        (-> (-> A/142 A/142) A/142 A/142))
---    (forall (A/179 :: (type 0))
---       ->
---       (-> (-> A/179 A/179) A/179 A/179))
---    (forall (A :: (type 0)) -> (-> (-> A A) A A)))
+Check plus
+-- ((A_235 : Type) → (A_235 → A_235) → A_235 → A_235) → ((A_272 : Type)
+--     → (A_272 → A_272) → A_272 → A_272) → (A : Type) → (A → A) → A → A
 
-Eval plus three two Nat Succ Zero.
--- (Succ (Succ (Succ (Succ (Succ Zero)))))
+Eval plus three two Nat Succ Zero
+-- Succ (Succ (Succ (Succ (Succ Zero))))
 -- : Nat
 ~~~
 
 `Nat` addition implemented with dependent eliminator:
 
 ~~~
-Nat : Type.
-Zero : Nat.
-Succ : Nat -> Nat.
+Nat  : Type
+Zero : Nat
+Succ : Nat -> Nat
 
-natElim : (m : Nat -> Type)
-       -> m Zero
-       -> ((l : Nat) -> m l -> m (Succ l))
-       -> ((k : Nat) -> m k).
+nat-elim : ∀ (m : Nat -> Type)
+        -> m Zero
+        -> (∀ (l : Nat) -> m l -> m (Succ l))
+        -> (k : Nat)
+        -> m k
 
-ePlus : Nat -> Nat -> Nat.
-ePlus =
-  natElim (\ (_ : Nat) => Nat -> Nat)
-          (\ (n : Nat) => n)
-          (\ (k : Nat) (rec : Nat -> Nat) (n : Nat) => Succ (rec n)).
+Check nat-elim
 
-Check ePlus.
+e-plus : Nat -> Nat -> Nat
+e-plus = nat-elim
+  (λ (_ : Nat). Nat -> Nat)
+  (λ (n : Nat). n)
+  (λ (k : Nat) (rec : (Nat -> Nat)) (n : Nat). Succ (rec n))
+
+Eval e-plus
+
 ~~~

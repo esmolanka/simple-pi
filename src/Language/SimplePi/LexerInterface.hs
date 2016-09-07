@@ -23,7 +23,7 @@ columnsInTab :: Int
 columnsInTab = 8
 
 advanceLineCol :: Char -> LineCol -> LineCol
-advanceLineCol '\n' (LineCol line _)   = LineCol (line + 1) 0
+advanceLineCol '\n' (LineCol line _)   = LineCol (line + 1) 1
 advanceLineCol '\t' (LineCol line col) = LineCol line (col + columnsInTab)
 advanceLineCol _    (LineCol line col) = LineCol line (col + 1)
 
@@ -60,10 +60,8 @@ alexGetByte input@AlexInput {aiInput, aiLineCol} =
     Just (c, cs) -> Just $ encode c cs
   where
     encode :: Char -> TL.Text -> (Word8, AlexInput)
-    encode c cs = (b, input')
+    encode c cs = (fixChar c, input')
       where
-        b :: Word8
-        b = fromIntegral $ ord $ fixChar c
         input' :: AlexInput
         input' = input
           { aiInput    = cs
@@ -72,15 +70,31 @@ alexGetByte input@AlexInput {aiInput, aiLineCol} =
           }
 
 -- Translate unicode character into special symbol we taught Alex to recognize.
-fixChar :: Char -> Char
+fixChar :: Char -> Word8
 fixChar c
   -- Plain ascii case
-  | c <= '\x7f' = c
-  -- Unicode case
-  | otherwise
-  = case generalCategory c of
-        Space -> space
-        _     -> nonSpaceUnicode
-  where
-    space           = '\x01'
-    nonSpaceUnicode = '\x02'
+  | c <= '\x7f' = fromIntegral $ ord $ c
+
+  -- Unicode lambda
+  | c == '\955'  =
+      0x03
+
+  -- Unicode forall
+  | c == '\8704' =
+      0x04
+
+  -- Unicode arrow
+  | c == '\8594' =
+      0x05
+
+  -- Unicode double arrow
+  | c == '\8658' =
+      0x06
+
+  -- Unicode spaces, separators, etc.
+  | generalCategory c == Space =
+      0x01
+
+  -- Other unicode graphical
+  | otherwise =
+      0x02
