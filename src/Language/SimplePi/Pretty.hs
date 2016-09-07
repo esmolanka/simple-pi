@@ -3,8 +3,8 @@
 
 module Language.SimplePi.Pretty where
 
-import Data.Text.Lazy (fromStrict)
--- import Data.List
+import Data.Text.Lazy (fromStrict, pack)
+import Data.Char
 import Text.PrettyPrint.Leijen.Text
 
 import Language.SimplePi.Types
@@ -52,8 +52,17 @@ ppExprF p expr =
       ppIdent idn
 
     Universe _ n ->
-      integer n
+      if n > 0 then text "Type" <> (text $ pack $ mkSubscript $ show n)
+               else text "Type"
   where
     pParen :: Bool -> Doc -> Doc
     pParen True  = parens
     pParen False = id
+
+mkSubscript :: String -> String
+mkSubscript =
+  map $ \c ->
+    let code = ord c in
+    if code >= 48 && code <= 57
+    then chr (code - 48 + 8320)
+    else c
