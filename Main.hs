@@ -25,7 +25,7 @@ import Language.SimplePi
 
 type EvalT m = ExceptT String (StateT (Context, Int) m)
 
-eval :: (Monad m) => (ExceptT String (ReaderT Env (State Int)) a) -> EvalT m a
+eval :: (Monad m) => ExceptT String (ReaderT Env (State Int)) a -> EvalT m a
 eval f = do
   (ctx, n) <- get
   let (res, n') = runState (runReaderT (runExceptT f) (Env { gamma = ctx, annotation = Any })) n
@@ -41,10 +41,10 @@ processStatement stmt =
       mapM_ processStatement stmts
       return Nothing
     (Definition idn expr) -> do
-      mtype <- gets (lookupType (desugarIdent idn) . fst)
+      mtype <- gets (maybe Any Exactly . lookupType (desugarIdent idn) . fst)
       let var = desugarIdent idn
-          expr' = maybe (desugar expr) (\ty -> Fix $ Internal.Annot dummyPos (desugar expr) ty) mtype
-      ty <- eval (inferType expr')
+          expr' = desugar expr
+      ty <- eval (inferTypeAnnot mtype expr')
       modify (first (extendCtx var ty (Just expr')))
       return Nothing
     (Parameter idn ty) -> do

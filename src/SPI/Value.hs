@@ -116,8 +116,6 @@ eval' = cata $ \case
       Neutral n -> Neutral . App n <$> a
       _ -> throwError $ displayPos pos ++ ": application to non-function"
 
-  Expr.Annot _pos e _ -> e
-
 reify :: (MonadError String m, MonadReader Env m, MonadState Int m) => Value -> m Expr
 reify = runEval . reify'
 

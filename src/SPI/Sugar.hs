@@ -51,7 +51,6 @@ sugar = cata alg
     alg (App pos f a)         = sugarApply pos f a
     alg (Var pos v)           = Fix $ AST.Var pos (sugarIdent v)
     alg (Universe pos n)      = Fix $ AST.Universe pos n
-    alg (Annot _ a _)         = a
 
     sugarLambda pos x t (Fix (AST.Lambda _ bnds body)) = Fix $ AST.Lambda pos (AST.Binding x t : bnds) body
     sugarLambda pos x t body = Fix $ AST.Lambda pos [AST.Binding x t] body

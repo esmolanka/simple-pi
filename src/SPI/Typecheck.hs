@@ -58,6 +58,9 @@ checkArgType pos var mty = do
         typesDontMatchError pos t t'
       return t
 
+inferTypeAnnot :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => TypeExpectation -> Expr -> m Expr
+inferTypeAnnot annot expr = local (\env -> env { annotation = annot }) (inferType expr)
+
 inferType :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => Expr -> m Expr
 inferType expr = para alg expr
   where
@@ -93,14 +96,6 @@ inferType expr = para alg expr
       unless eq $
         typesDontMatchError pos targ targ'
       checkType pos =<< subst (M.singleton x argexpr) tbody
-
-    alg (Annot pos (_, e) (texpr, t)) = do
-      _ <- getUniverse =<< normalize =<< t
-      inferred <- withAnnot texpr e
-      eq <- equal inferred texpr
-      unless eq $
-        typesDontMatchError pos inferred texpr
-      checkType pos inferred
 
 normalize :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => Expr -> m Expr
 normalize = Value.reify <=< Value.eval
