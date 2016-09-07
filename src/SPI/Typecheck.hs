@@ -14,7 +14,6 @@ import qualified Data.Map as M
 import SPI.Env
 import SPI.Error
 import SPI.Expr
-import SPI.Grammar
 import qualified SPI.Value as Value
 
 import Language.SimplePi.Types (Position (..), dummyPos)
@@ -119,4 +118,4 @@ checkEqual :: (MonadError String m, MonadReader Env m, MonadState Int m) => Expr
 checkEqual e1 e2 = do
   eq <- equal e1 e2
   unless eq $
-    throwError $ displayPos (getPos e1) ++ ": terms are not equal:\n" ++ displayExpr e1 ++ "\n" ++ displayExpr e2
+    typesDontMatchError (getPos e1) e1 e2

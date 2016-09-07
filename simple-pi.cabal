@@ -19,7 +19,6 @@ library
     SPI.Env
     SPI.Error
     SPI.Expr
-    SPI.Grammar
     SPI.Sugar
     SPI.Typecheck
     SPI.Value
@@ -33,14 +32,16 @@ library
     Language.SimplePi.Types
 
   default-language:    Haskell2010
-  build-depends:       base >= 4.7 && < 5, mtl, transformers, containers, sexp-grammar,
-                       bytestring, text, semigroups, recursion-schemes, wl-pprint-text, array
+  build-depends:       base >= 4.7 && < 5, mtl, transformers, containers,
+                       bytestring, text, semigroups, recursion-schemes,
+                       wl-pprint-text, array
 
 executable spi
   main-is:             Main.hs
   ghc-options:         -Wall -fno-warn-name-shadowing -fno-warn-unused-do-bind
   default-language:    Haskell2010
-  build-depends:       simple-pi, base >= 4.7 && < 5, mtl, transformers, containers, bytestring, text, sexp-grammar
+  build-depends:       simple-pi, base >= 4.7 && < 5, mtl, transformers,
+                       containers, bytestring, text
 
 test-suite spi-tests
   type:                exitcode-stdio-1.0
@@ -48,4 +49,5 @@ test-suite spi-tests
   main-is:             Tests.hs
   ghc-options:         -Wall -fno-warn-name-shadowing -fno-warn-unused-do-bind
   default-language:    Haskell2010
-  build-depends:       simple-pi, base >= 4.7 && < 5, mtl, transformers, containers, text, sexp-grammar, tasty, tasty-hunit
+  build-depends:       simple-pi, base >= 4.7 && < 5, mtl, transformers,
+                       containers, text, tasty, tasty-hunit

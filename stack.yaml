@@ -1,9 +1,5 @@
 resolver: lts-6.3
 packages:
 - '.'
-- location:
-    git: https://github.com/esmolanka/sexp-grammar.git
-    commit: 8ed63a0b32c3243427354fb0f8795582d2d4e205
 extra-deps:
-# - sexp-grammar-1.2.1
 - recursion-schemes-4.1.2
