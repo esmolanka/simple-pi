@@ -27,4 +27,4 @@ parseProgram :: FilePath -> Text -> Either String [Statement]
 parseProgram fn str = pProgram (lexSimplePi (dummyPos { posFileName = T.pack fn }) str)
 
 prettyExpr :: Expr -> Text
-prettyExpr = displayT . renderPretty 1.0 100 . ppExpr 0
+prettyExpr = displayT . renderPretty 0.95 80 . ppExpr 0

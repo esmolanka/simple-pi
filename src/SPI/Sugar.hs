@@ -29,8 +29,6 @@ desugar = cata alg
       in foldr (\e rest -> Fix $ Pi pos Dummy e rest) (last es) (init es)
     alg (AST.App pos a b rest) =
       foldl (\acc e -> Fix $ App pos acc e) a (b:rest)
-    alg (AST.Annot pos e t) =
-      Fix $ Annot pos e t
     alg (AST.Var pos var) =
       Fix $ Var pos (desugarIdent var)
     alg (AST.Universe pos u) =
@@ -46,19 +44,14 @@ sugar :: Expr -> AST.Expr
 sugar = cata alg
   where
     alg :: ExprF (AST.Expr) -> AST.Expr
-
-    alg (Lambda pos x t b) = sugarLambda pos (sugarIdent x) t b
-
     alg (Pi pos x t b)
       | uses (sugarIdent x) b = Fix $ AST.Pi pos (AST.Binding (sugarIdent x) (Identity t)) b
       | otherwise             = sugarArrow pos t b
-
-    alg (App pos f a)      = sugarApply pos f a
-
-    alg (Annot pos e t)    = Fix $ AST.Annot pos e t
-
-    alg (Var pos v)        = Fix $ AST.Var pos (sugarIdent v)
-    alg (Universe pos n)   = Fix $ AST.Universe pos n
+    alg (Lambda pos x t b)    = sugarLambda pos (sugarIdent x) t b
+    alg (App pos f a)         = sugarApply pos f a
+    alg (Var pos v)           = Fix $ AST.Var pos (sugarIdent v)
+    alg (Universe pos n)      = Fix $ AST.Universe pos n
+    alg (Annot _ a _)         = a
 
     sugarLambda pos x t (Fix (AST.Lambda _ bnds body)) = Fix $ AST.Lambda pos (AST.Binding x t : bnds) body
     sugarLambda pos x t body = Fix $ AST.Lambda pos [AST.Binding x t] body

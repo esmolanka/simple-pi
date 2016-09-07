@@ -31,23 +31,20 @@ ppExprF :: Int -> ExprF Expr -> Doc
 ppExprF p expr =
   case expr of
     App _ a b rest     -> pParen (p >= 8) $
-      fillSep $ map (ppExpr 8) (a : b : rest)
+      group $ nest 2 $ vsep $ map (ppExpr 8) (a : b : rest)
 
     Pi _ bnd e         -> pParen (p >= 5) $
-      ppBnd' bnd <+> text "->" <+> nest 2 (ppExpr 3 e)
+      group $ nest 2 $ ppBnd' bnd </>  text "->" <+> ppExpr 3 e
 
     Arrow _ a b rest   ->
       let (lst, bdy) = (last &&& init) (a : b : rest)
-      in foldr ppArrow (ppExpr 3 lst) bdy
+      in group $ nest 2 $ foldr ppArrow (ppExpr 3 lst) bdy
       where
         ppArrow :: Expr -> Doc -> Doc
-        ppArrow e tail = pParen (p >= 4) $ ppExpr 5 e <+> text "->" <+> tail
+        ppArrow e tail = pParen (p >= 4) $ ppExpr 5 e </> text "->" <+> tail
 
     Lambda   _ bnds e  -> pParen (p >= 1) $
-      text "\\" <> fillSep (map ppBnd bnds) <+> text "=>" <+> nest 2 (ppExpr 1 e)
-
-    Annot _ e t        -> pParen (p >= 0) $
-      parens (ppExpr 0 e) <+> colon <> colon <+> ppExpr 0 t
+      group $ text "\\" <> fillSep (map ppBnd bnds) <+> nest 2 (text "=>" </> ppExpr 1 e)
 
     Var _ idn ->
       ppIdent idn

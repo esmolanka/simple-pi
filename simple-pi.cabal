@@ -1,6 +1,6 @@
 name:                simple-pi
 version:             0.1.0.0
-synopsis:            Simple project template from stack
+synopsis:            Toy implementation of DTLC.
 description:         Please see README.md
 homepage:            https://github.com/esmolanka/simple-pi#readme
 license:             BSD3

@@ -50,7 +50,6 @@ data ExprF e
   | Pi       Position (Binding Identity e) e
   | Arrow    Position e e [e]
   | App      Position e e [e]
-  | Annot    Position e e
   | Var      Position Ident
   | Universe Position Integer
     deriving (Show, Eq, Functor, Foldable, Generic)
@@ -62,7 +61,6 @@ getPosition (Fix e) =
     (Pi     pos _ _) -> pos
     (Arrow  pos _ _ _) -> pos
     (App    pos _ _ _) -> pos
-    (Annot  pos _ _) -> pos
     (Var    pos _) -> pos
     (Universe pos _) -> pos
 
