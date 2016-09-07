@@ -3,6 +3,7 @@
 
 module Language.SimplePi.Pretty where
 
+import Control.Arrow ((&&&))
 import Data.Text.Lazy (fromStrict, pack)
 import Data.Char
 import Text.PrettyPrint.Leijen.Text
@@ -36,8 +37,8 @@ ppExprF p expr =
       ppBnd' bnd <+> text "->" <+> nest 2 (ppExpr 3 e)
 
     Arrow _ a b rest   ->
-      let (h : t) = reverse (a : b : rest)
-      in foldr ppArrow (ppExpr 3 h) t
+      let (lst, bdy) = (last &&& init) (a : b : rest)
+      in foldr ppArrow (ppExpr 3 lst) bdy
       where
         ppArrow :: Expr -> Doc -> Doc
         ppArrow e tail = pParen (p >= 4) $ ppExpr 5 e <+> text "->" <+> tail
