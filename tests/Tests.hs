@@ -6,14 +6,15 @@ import Control.Monad.State.Strict
 import Control.Monad.Reader
 import Control.Monad.Except
 
+import Data.Text.Lazy (unpack)
 import Data.Text (pack)
 
 import SPI.Env
 import SPI.Expr
 import SPI.Typecheck
+import SPI.Sugar
 
-import SPI.Grammar (displayExpr)
-import Language.SimplePi (dummyPos)
+import Language.SimplePi (dummyPos, prettyExpr)
 
 app :: Expr -> Expr -> Expr
 app f a = Fix $ App dummyPos f a
@@ -27,10 +28,6 @@ forall var a b = Fix $ Pi dummyPos (VarStr (pack var)) a b
 infixr 2 ~>
 (~>) :: Expr -> Expr -> Expr
 (~>) a b = Fix $ Pi dummyPos Dummy a b
-
-infix 9 .:
-(.:) :: Expr -> Expr -> Expr
-(.:) expr typ = Fix $ Annot dummyPos expr typ
 
 var :: String -> Expr
 var name = Fix $ Var dummyPos $ VarStr (pack name)
@@ -47,19 +44,20 @@ infer expr =
   in either (error . ("\n" ++)) id res
 
 prn :: Expr -> IO ()
-prn = putStrLn . displayExpr
+prn = putStrLn . unpack . prettyExpr . sugar
 
-test_inferpi1 :: Expr
-test_inferpi1 =
-    ( lambda "A" Nothing $
-        lambda "f" Nothing $
-          lambda "x" Nothing $
-            app (var "f") (var "x")
-    ) .:
-    ( forall "X" typ $
-        (var "X" ~> var "X") ~> var "X" ~> var "X"
-    )
+-- test_inferpi1 :: Expr
+-- test_inferpi1 =
+--     ( lambda "A" Nothing $
+--         lambda "f" Nothing $
+--           lambda "x" Nothing $
+--             app (var "f") (var "x")
+--     ) .:
+--     ( forall "X" typ $
+--         (var "X" ~> var "X") ~> var "X" ~> var "X"
+--     )
 
 main :: IO ()
 main = do
-  prn $ infer $ test_inferpi1
+  return ()
+  -- prn $ infer $ test_inferpi1
