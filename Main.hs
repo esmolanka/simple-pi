@@ -17,7 +17,6 @@ import Data.Text.Lazy (Text, pack)
 import Data.Monoid ((<>))
 
 import SPI.Sugar
-import qualified SPI.Expr as Internal
 import SPI.Typecheck
 import SPI.Env
 
