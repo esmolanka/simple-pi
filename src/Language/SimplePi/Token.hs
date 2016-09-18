@@ -41,10 +41,10 @@ infix 9 @@
 
 instance Pretty Token where
   pretty (TokPunct      s) = "punctuation" <+> squotes (text (fromStrict s))
-  pretty TokLambda         = "lambda"
-  pretty TokForall         = "forall"
-  pretty TokArrow          = "arrow"
-  pretty TokDblArrow       = "double-arrow"
+  pretty TokLambda         = "lambda (\\, λ)"
+  pretty TokForall         = "forall (forall, ∀)"
+  pretty TokArrow          = "arrow (->, →)"
+  pretty TokDblArrow       = "lambda body (=>, ⇒, .)"
   pretty (TokReserved   s) = "reserved" <+> dquotes (text (fromStrict s))
   pretty (TokIdentifier s) = "identifier" <+> dquotes (text (fromStrict s))
   pretty (TokNumber     n) = "number" <+> integer n

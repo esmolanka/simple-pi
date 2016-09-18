@@ -91,6 +91,10 @@ fixChar c
   | c == '\8658' =
       0x06
 
+  | generalCategory c >= UppercaseLetter &&
+    generalCategory c <= OtherLetter =
+      0x07
+
   -- Unicode spaces, separators, etc.
   | generalCategory c == Space =
       0x01

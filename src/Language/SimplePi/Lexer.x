@@ -27,8 +27,10 @@ $whitechar   = [\ \t\n\r\f\v]
 $unispace    = \x01
 $whitespace  = [$whitechar $unispace]
 
+$unialpha    = \x07
+
 $uninonspace = \x02
-$uniany      = [$unispace $uninonspace]
+$uniany      = [$unialpha $unispace $uninonspace]
 @any         = (. | $uniany)
 
 $lambda      = \x03
@@ -41,7 +43,7 @@ $alpha       = [a-z A-Z]
 
 @natural     = $digit+
 
-$idinitial   = [$alpha \_]
+$idinitial   = [$alpha $unialpha \_]
 $idsubseq    = [$idinitial $digit $uninonspace \- \']
 @identifier  = $idinitial $idsubseq*
 
