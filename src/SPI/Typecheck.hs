@@ -22,9 +22,6 @@ import qualified SPI.Value as Value
 
 import Language.SimplePi.Types (Position (..), dummyPos)
 
-trace :: String -> a -> a
-trace = flip const
-
 checkType' :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => Position -> TypeExpectation -> Expr -> m Expr
 checkType' pos ann typ = do
   case ann of
@@ -48,26 +45,6 @@ checkType pos typ = do
 inferTypeAnnot :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => TypeExpectation -> Expr -> m Expr
 inferTypeAnnot annot expr =
   local (\env -> env { annotation = annot }) (inferType expr)
-
-traceTC :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => ExprF (Expr, m Expr) -> ExprF (Expr, m Expr)
-traceTC e =
-  let trc :: (Expr, m Expr) -> m Expr
-      trc (expr, m) = do
-        annot <- asks annotation
-        let txt = "In: " ++ pp (Fix $ fmap fst e) ++ "\n  " ++
-                  pp expr ++ " <: " ++ ppAnnot annot
-        trace txt $ return ()
-        r <- m
-        let txt' = "In: " ++ pp (Fix $ fmap fst e) ++ "\n  " ++
-                   pp expr ++ " :> " ++ pp r
-        trace txt' $ return r
-  in fmap (fst &&& trc) e
-
-ppAnnot :: TypeExpectation -> String
-ppAnnot x = case x of
-  Any -> "⋆"
-  LamArg a ann -> pp a ++ " → " ++ ppAnnot ann
-  Exactly b -> pp b
 
 inferType :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => Expr -> m Expr
 inferType expr = do
@@ -112,20 +89,22 @@ inferType expr = do
       checkType pos (Fix $ Pi pos arg argty bodyty)
 
     alg (App pos (_, f) (argexpr, a)) = do
-      ann <- getAnnot
-      trace ("Application: " ++ ppAnnot ann) return ()
+      (x, tbody) <-
+        (do
+            (x, targ, tbody) <- getPi pos "application" =<< normalize =<< f ?: Any
+            targ' <- normalize =<< a ?: Exactly targ
+            eq <- equal targ targ'
+            unless eq $
+              typesDontMatchError pos targ targ'
+            return (x, tbody)
+        ) `catchError`
+        (\_ -> do
+            t <- normalize =<< a ?: Any
+            ann <- getAnnot
+            (x, _, tbody) <- getPi pos "application" =<< normalize =<< f ?: LamArg t ann
+            return (x, tbody)
+        )
 
-      targ1 <- catchError (return . Just =<< normalize =<< a ?: Any) (\_ -> return Nothing)
-
-      (x, targ, tbody) <-
-        getPi pos "application" =<<
-        normalize =<<
-        maybe (f ?: Any) (\t -> f ?: LamArg t ann) targ1
-
-      targ' <- normalize =<< a ?: Exactly targ
-      eq <- equal targ targ'
-      unless eq $
-        typesDontMatchError pos targ targ'
       checkType pos =<< subst (M.singleton x argexpr) tbody
 
 normalize :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => Expr -> m Expr
@@ -145,3 +124,29 @@ checkEqual e1 e2 = do
   eq <- equal e1 e2
   unless eq $
     typesDontMatchError (getPos e1) e1 e2
+
+----------------------------------------------------------------------
+-- Trace
+
+trace :: String -> a -> a
+trace = flip const
+
+traceTC :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => ExprF (Expr, m Expr) -> ExprF (Expr, m Expr)
+traceTC e =
+  let trc :: (Expr, m Expr) -> m Expr
+      trc (expr, m) = do
+        annot <- asks annotation
+        let txt = "In: " ++ pp (Fix $ fmap fst e) ++ "\n  " ++
+                  pp expr ++ " <: " ++ ppAnnot annot
+        trace txt $ return ()
+        r <- m
+        let txt' = "In: " ++ pp (Fix $ fmap fst e) ++ "\n  " ++
+                   pp expr ++ " :> " ++ pp r
+        trace txt' $ return r
+  in fmap (fst &&& trc) e
+
+ppAnnot :: TypeExpectation -> String
+ppAnnot x = case x of
+  Any -> "⋆"
+  LamArg a ann -> pp a ++ " → " ++ ppAnnot ann
+  Exactly b -> pp b
