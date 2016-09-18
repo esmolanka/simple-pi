@@ -4,6 +4,8 @@
 
 module SPI.Typecheck where
 
+import Control.Arrow ((&&&))
+
 import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Except
@@ -16,15 +18,19 @@ import SPI.Error
 import SPI.Expr
 import qualified SPI.Value as Value
 
+-- import Debug.Trace
+
 import Language.SimplePi.Types (Position (..), dummyPos)
 
-checkType :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => Position -> Expr -> m Expr
-checkType pos typ = do
-  ann <- asks annotation
+trace :: String -> a -> a
+trace = flip const
+
+checkType' :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => Position -> TypeExpectation -> Expr -> m Expr
+checkType' pos ann typ = do
   case ann of
     Any -> return ()
-    LamArg argt' -> do
-      (_, argt, _) <- getPi pos "checking type against lambda" =<< normalize typ
+    LamArg argt' _ann' -> do
+      (_, argt, _bodyt) <- getPi pos "checking type against lambda" =<< normalize typ
       eq <- equal argt argt'
       unless eq $
         typesDontMatchError pos argt argt'
@@ -34,35 +40,38 @@ checkType pos typ = do
         typesDontMatchError pos typ rtyp
   return typ
 
-expectPi :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => m (Maybe Variable, Maybe Expr, Maybe Expr)
-expectPi = do
+checkType :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => Position -> Expr -> m Expr
+checkType pos typ = do
   ann <- asks annotation
-  case ann of
-    Any -> return (Nothing, Nothing, Nothing)
-    LamArg ty -> return (Nothing, Just ty, Nothing)
-    Exactly ty -> do
-      (var, arg, body) <- getPi dummyPos "expecting Pi" =<< normalize ty
-      return (Just var, Just arg, Just body)
-
-checkArgType :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => Position -> Variable -> Maybe Expr -> m Expr
-checkArgType pos var mty = do
-  (_, mty', _) <- expectPi
-  case (mty, mty') of
-    (Nothing, Nothing) ->
-      throwError $ displayPos pos ++ ": cannot infer type for variable " ++ show var
-    (Just t, Nothing) -> return t
-    (Nothing, Just t) -> return t
-    (Just t,  Just t') -> do
-      eq <- equal t t'
-      unless eq $
-        typesDontMatchError pos t t'
-      return t
+  checkType' pos ann typ
 
 inferTypeAnnot :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => TypeExpectation -> Expr -> m Expr
-inferTypeAnnot annot expr = local (\env -> env { annotation = annot }) (inferType expr)
+inferTypeAnnot annot expr =
+  local (\env -> env { annotation = annot }) (inferType expr)
+
+traceTC :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => ExprF (Expr, m Expr) -> ExprF (Expr, m Expr)
+traceTC e =
+  let trc :: (Expr, m Expr) -> m Expr
+      trc (expr, m) = do
+        annot <- asks annotation
+        let txt = "In: " ++ pp (Fix $ fmap fst e) ++ "\n  " ++
+                  pp expr ++ " <: " ++ ppAnnot annot
+        trace txt $ return ()
+        r <- m
+        let txt' = "In: " ++ pp (Fix $ fmap fst e) ++ "\n  " ++
+                   pp expr ++ " :> " ++ pp r
+        trace txt' $ return r
+  in fmap (fst &&& trc) e
+
+ppAnnot :: TypeExpectation -> String
+ppAnnot x = case x of
+  Any -> "⋆"
+  LamArg a ann -> pp a ++ " → " ++ ppAnnot ann
+  Exactly b -> pp b
 
 inferType :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => Expr -> m Expr
-inferType expr = para alg expr
+inferType expr = do
+  subst M.empty expr >>= para (alg . traceTC)
   where
     alg :: ExprF (Expr, m Expr) -> m Expr
     alg (Var pos x) = do
@@ -75,23 +84,45 @@ inferType expr = para alg expr
       checkType pos $ Fix $ Universe pos (succ n)
 
     alg (Pi pos x (texpr, t) (_, b)) = do
-      k1 <- getUniverse =<< normalize =<< eraseAnnot t
-      k2 <- getUniverse =<< normalize =<< eraseAnnot (inContext x texpr b)
+      k1 <- getUniverse =<< normalize =<< t ?: Any
+      k2 <- getUniverse =<< normalize =<< inContext x texpr b ?: Any
       checkType pos $ Fix $ Universe pos (max k1 k2)
 
     alg (Lambda pos arg marg (_, b)) = do
-      argty <- checkArgType pos arg (fmap fst marg)
-      (arg', _, bodyty') <- expectPi
-      bodyty'' <-
-        case (arg', bodyty') of
-          (Just x, Just expr) -> Just <$> subst (M.singleton x (Fix $ Var pos arg)) expr
-          _ -> return bodyty'
-      bodyty  <- inContext arg argty $ maybe eraseAnnot withAnnot bodyty'' $ b
+      ann <- getAnnot
+      (margty, bodyty'') <- case ann of
+        Any -> return (Nothing, Any)
+        LamArg ty ann -> return (Just ty, ann)
+        Exactly ty -> do
+          (var, argty, bodyty) <- getPi dummyPos "expecting Pi" =<< normalize ty
+          ann <- Exactly <$> subst (M.singleton var (Fix $ Var pos arg)) bodyty
+          return (Just argty, ann)
+
+      argty <- case (margty, fmap fst marg) of
+        (Nothing, Nothing) -> throwError $ displayPos pos ++ ": cannot infer type for variable " ++ pp (Fix $ Var pos arg)
+        (Just ty, Just ty') -> do
+          eq <- equal ty ty'
+          unless eq $
+            typesDontMatchError pos ty ty'
+          return ty
+        (Just ty, Nothing) -> return ty
+        (Nothing, Just ty) -> return ty
+
+      bodyty <- inContext arg argty $ b ?: bodyty''
       checkType pos (Fix $ Pi pos arg argty bodyty)
 
     alg (App pos (_, f) (argexpr, a)) = do
-      targ' <- normalize =<< eraseAnnot a
-      (x, targ, tbody) <- getPi pos "application" =<< normalize =<< withLamArgAnnot targ' f
+      ann <- getAnnot
+      trace ("Application: " ++ ppAnnot ann) return ()
+
+      targ1 <- catchError (return . Just =<< normalize =<< a ?: Any) (\_ -> return Nothing)
+
+      (x, targ, tbody) <-
+        getPi pos "application" =<<
+        normalize =<<
+        maybe (f ?: Any) (\t -> f ?: LamArg t ann) targ1
+
+      targ' <- normalize =<< a ?: Exactly targ
       eq <- equal targ targ'
       unless eq $
         typesDontMatchError pos targ targ'

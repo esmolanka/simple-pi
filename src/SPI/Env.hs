@@ -42,17 +42,16 @@ data Env = Env
 
 data TypeExpectation
   = Any
-  | LamArg Expr
+  | LamArg Expr TypeExpectation
   | Exactly Expr
 
-eraseAnnot :: forall a m. (MonadError String m, MonadReader Env m, MonadState Int m) => m a -> m a
-eraseAnnot = local (\env -> env { annotation = Any })
+infix 2 ?:
 
-withAnnot :: forall a m. (MonadError String m, MonadReader Env m, MonadState Int m) => Expr -> m a -> m a
-withAnnot ty = local (\env -> env { annotation = Exactly ty })
+(?:) :: forall a m. (MonadError String m, MonadReader Env m, MonadState Int m) => m a -> TypeExpectation -> m a
+(?:) tc annot = local (\env -> env { annotation = annot }) tc
 
-withLamArgAnnot :: forall a m. (MonadError String m, MonadReader Env m, MonadState Int m) => Expr -> m a -> m a
-withLamArgAnnot ty = local (\env -> env { annotation = LamArg ty })
+getAnnot :: forall m. (MonadError String m, MonadReader Env m, MonadState Int m) => m TypeExpectation
+getAnnot = asks annotation
 
 inContext :: forall a m. (MonadError String m, MonadReader Env m, MonadState Int m) => Variable -> Expr -> m a -> m a
 inContext var typ = local (\env -> env { gamma = extendCtx var typ Nothing (gamma env)})
