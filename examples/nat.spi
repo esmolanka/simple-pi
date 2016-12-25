@@ -27,7 +27,6 @@ nat-elim : ∀ (m : Nat -> Type)
 
 Check nat-elim
 
-e-plus : Nat -> Nat -> Nat
 e-plus = nat-elim
   (λ (_ : Nat). Nat -> Nat)
   (λ (n : Nat). n)

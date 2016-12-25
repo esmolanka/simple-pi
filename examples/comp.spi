@@ -1,0 +1,31 @@
+compSimp =
+  λ (A : Type)
+    (B : Type)
+    (C : Type)
+    (g : B -> C)
+    (f : A -> B)
+    (x : A) => g (f x)
+
+compSimp₁ =
+  λ (A : Type₁)
+    (B : Type₁)
+    (C : Type₁)
+    (g : B -> C)
+    (f : A -> B)
+    (x : A) => g (f x)
+
+compDep =
+  λ (A : Type)
+    (B : A -> Type)
+    (C : (a : A) -> B a -> Type)
+    (g : (a : A) -> (b : B a) -> C a b)
+    (f : (a : A) -> B a)
+    (a : A) => g a (f a)
+
+compDep₁ =
+  λ (A : Type₁)
+    (B : A -> Type₁)
+    (C : (a : A) -> B a -> Type₁)
+    (g : (a : A) -> (b : B a) -> C a b)
+    (f : (a : A) -> B a)
+    (a : A) => g a (f a)

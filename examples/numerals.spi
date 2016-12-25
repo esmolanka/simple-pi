@@ -1,27 +1,43 @@
-
 Load nat
+Load comp
 
-numeral : Type₁
 numeral = (A : Type) -> (A -> A) -> A -> A
 
-zero : numeral
-zero = \A f x => x
+zero   = \(A : Type) (f : A -> A) (x : A) => x
+succ   = \(n : numeral) (A : Type) (f : A -> A) (x : A) => n A f (f x)
+one    = \(A : Type) (f : A -> A) (x : A) => f x
+two    = \(A : Type) (f : A -> A) (x : A) => f (f x)
+three  = \(A : Type) (f : A -> A) (x : A) => f (f x)
 
-one : numeral
-one = \A f x => f x
+two' = 
+  compDep₁
+    numeral
+    (λ (_ : numeral) => numeral)
+    (λ (_ : numeral) (_ : numeral) => numeral)
+    (λ (_ : numeral) (a : numeral) => succ a)
+    (λ (a : numeral) => succ a)
+    zero
 
-two : numeral
-two = \A f x => f (f x)
+two'' = 
+  compSimp₁
+    numeral
+    numeral
+    numeral
+    succ
+    succ
+    zero
 
-three : numeral
-three = \A f x => f (f (f x))
-
-plus : numeral -> numeral -> numeral
 plus =
-  \m n =>
-    \A f x =>
-      m A f (n A f x)
+  \(m : numeral) (n : numeral) =>
+     \(A : Type) (f : A -> A) (x : A) =>
+        m A f (n A f x)
 
-Check plus
-
+Eval plus
 Eval plus three two Nat Succ Zero
+
+Id₁   : (A : Type₁) → A → A → Type₁
+Refl₁ : (A : Type₁) → (a : A) → Id₁ A a a
+Predicate₁ : (A : Type₁) → (x, y : A) → Id₁ A x y → Type₁
+
+Check Predicate₁ numeral two  two'  (Refl₁ numeral two)
+Check Predicate₁ numeral two' two'' (Refl₁ numeral two')
